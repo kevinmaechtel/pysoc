@@ -9,7 +9,7 @@ class DFTB_plus_parser(Molsoc):
     """
     
     # Recognised orbital labels.
-    ORBITALS = ['s1', 'p1', 'p2', 'p3', 'd1', 'd2', 'd3', 'd4', 'd5', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7']
+    ORBITALS = ['s', 'p_x', 'p_y', 'p_z', 'd_xy', 'd_xz', 'd_yz', 'd_x2_y2', 'd_z2', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7']
 
     @property
     def default_fitted_basis(self):
@@ -195,13 +195,21 @@ class DFTB_plus_parser(Molsoc):
         This method is called as part of parse() (you do not normally need to call this method yourself).
         """
         
-        max_shell = ['s1', 'p3', 'd5', 'f7']
+        max_shell = ['s', 'p_x', 'd_z2', 'f7']
         # Start reading.
         with open(self.eigenvectors_file_name, 'r') as eigenvectors_file:
             for line in eigenvectors_file:
                 # Split on whitespace.
                 parts = line.split()
                 
+                # remove the first two items (atom information)
+                if len(parts) > 1:
+                    try:
+                        int(parts[0])
+                        parts = parts[2:]
+                    except ValueError:
+                        pass
+
                 # Only save lines which contain coefficients.
                 if len(parts) > 1 and parts[0] in self.ORBITALS:
                     self.MOA_coefficients.append(parts[1])
@@ -212,19 +220,30 @@ class DFTB_plus_parser(Molsoc):
                 # Split on whitespace.
                 parts = line.split()
                 
+                # remove the first two items (atom information)
+                if len(parts) > 1:
+                    try:
+                        int(parts[0])
+                        parts = parts[2:]
+                    except ValueError:
+                        pass
+
                 if len(parts) > 1:
                     # Save the number of shells once we've finished reading each orbital
                     if parts[0] in max_shell:
                         # For d and f orbitals we save 6 and 10 shells rather than the 5 and 7.
                         # Otherwise we just save the number of given shells.
-                        if parts[0] == 'd5':
+                        if parts[0] == 'p_x':
+                            #self.ao_basis.append('3')
+                            self.ao_basis.append(3)
+                        elif parts[0] == 'd_z2':
                             #self.ao_basis.append('6')
                             self.ao_basis.append(6)
                         elif parts[0] == 'f7':
-                            self.ao_basis.append('10')
+                            #self.ao_basis.append('10')
                             self.ao_basis.append(10)
                         else:
-                            self.ao_basis.append(int(list(parts[0])[1]))
+                            self.ao_basis.append(1)
                             
                     # We only need to save shells once, so stop after the first orbital.
                     elif all(s in parts for s in ['Eigenvector:', '2']):
