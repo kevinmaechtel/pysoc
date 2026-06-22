@@ -9,7 +9,7 @@ class DFTB_plus_parser(Molsoc):
     """
     
     # Recognised orbital labels.
-    ORBITALS = ['s', 'p_x', 'p_y', 'p_z', 'd_xy', 'd_xz', 'd_yz', 'd_x2_y2', 'd_z2', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7']
+    ORBITALS = ['s', 'p_x', 'p_y', 'p_z', 'd_xy', 'd_yz', 'd_z2', 'd_xz', 'd_x2-y2', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7']
 
     @property
     def default_fitted_basis(self):
@@ -236,7 +236,7 @@ class DFTB_plus_parser(Molsoc):
                         if parts[0] == 'p_x':
                             #self.ao_basis.append('3')
                             self.ao_basis.append(3)
-                        elif parts[0] == 'd_z2':
+                        elif parts[0] == 'd_x2-y2':
                             #self.ao_basis.append('6')
                             self.ao_basis.append(6)
                         elif parts[0] == 'f7':
