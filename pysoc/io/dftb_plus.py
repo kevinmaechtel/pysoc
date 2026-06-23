@@ -167,7 +167,7 @@ class DFTB_plus_parser(Molsoc):
                     self.MO_energies.append(float(parts[0]))
                     
                     # The second is the occupancy.
-                    occupancy = float(parts[1])
+                    occupancy = float(parts[2])
                     # For some reason, we take 0.00005 as the threshold for occupancy...
                     if occupancy - 1.0 > 1.0E-5:
                         self.num_occupied_orbitals += 1
@@ -195,7 +195,7 @@ class DFTB_plus_parser(Molsoc):
         This method is called as part of parse() (you do not normally need to call this method yourself).
         """
         
-        max_shell = ['s', 'p_x', 'd_z2', 'f7']
+        max_shell = ['s', 'p_x', 'd_x2-y2', 'f7']
         # Start reading.
         with open(self.eigenvectors_file_name, 'r') as eigenvectors_file:
             for line in eigenvectors_file:
@@ -279,14 +279,14 @@ class DFTB_plus_parser(Molsoc):
 
         for i in self.requested_singlets:
             np = (len(self.triplet_states) +i -1) * self.ndim
-            transition_coefficients = {transitions[k]: CI_coefficients[np+k] for k in range(self.ndim)}
-            for transition, coefficient in sorted(transition_coefficients.items()):
+            transition_coefficients = {CI_coefficients[np+k] for k in range(self.ndim)}
+            for coefficient in sorted(transition_coefficients):
                 self.CI_coefficients.append(coefficient)
                 
         for i in self.requested_triplets:
             np = (i-1) * self.ndim
-            transition_coefficients = {transitions[k]: CI_coefficients[np+k] for k in range(self.ndim)}
-            for transition, coefficient in sorted(transition_coefficients.items()):
+            transition_coefficients = {CI_coefficients[np+k] for k in range(self.ndim)}
+            for coefficient in sorted(transition_coefficients):
                 self.CI_coefficients.append(coefficient)
                 
                     
