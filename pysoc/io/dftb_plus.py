@@ -163,10 +163,10 @@ class DFTB_plus_parser(Molsoc):
                 # Split.
                 parts = line.split()
                 if len(parts) > 1 and self.NUMBER_SEARCH.match(parts[0]):
-                    # The first part is the energy.
-                    self.MO_energies.append(float(parts[0]))
+                    # The second part is the energy.
+                    self.MO_energies.append(float(parts[1]))
                     
-                    # The second is the occupancy.
+                    # The third is the occupancy.
                     occupancy = float(parts[2])
                     # For some reason, we take 0.00005 as the threshold for occupancy...
                     if occupancy - 1.0 > 1.0E-5:
