@@ -9,7 +9,7 @@ class DFTB_plus_parser(Molsoc):
     """
     
     # Recognised orbital labels.
-    ORBITALS = ['s', 'p_x', 'p_y', 'p_z', 'd_xy', 'd_yz', 'd_z2', 'd_xz', 'd_x2-y2', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7']
+    ORBITALS = ['s', 'p_y', 'p_z', 'p_x', 'd_xy', 'd_yz', 'd_z2', 'd_xz', 'd_x2-y2', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7']
 
     @property
     def default_fitted_basis(self):
@@ -279,15 +279,13 @@ class DFTB_plus_parser(Molsoc):
 
         for i in self.requested_singlets:
             np = (len(self.triplet_states) +i -1) * self.ndim
-            transition_coefficients = {CI_coefficients[np+k] for k in range(self.ndim)}
-            for coefficient in sorted(transition_coefficients):
-                self.CI_coefficients.append(coefficient)
+            # Changed Parser to remove reordering of CI coefficients to match the order of the transitions in SPX.DAT
+            self.CI_coefficients.extend(CI_coefficients[np:np + self.ndim])
                 
         for i in self.requested_triplets:
             np = (i-1) * self.ndim
-            transition_coefficients = {CI_coefficients[np+k] for k in range(self.ndim)}
-            for coefficient in sorted(transition_coefficients):
-                self.CI_coefficients.append(coefficient)
+            # Changed Parser to remove reordering of CI coefficients to match the order of the transitions in SPX.DAT
+            self.CI_coefficients.extend(CI_coefficients[np:np + self.ndim])
                 
                     
     def parse_geometries(self):
