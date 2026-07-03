@@ -36,7 +36,7 @@ class DFTB_plus_parser(Molsoc):
         :param band_file_name: Name/path to the density of states (DOS) output file (band.out).
         :param excitations_file_name: Name/path to the excited states file (EXC.DAT).
         :param overlap_matrix_file_name: Name/path to the file containing Hamiltonian overlap matrices (oversqr.dat).
-        :param eigenvectors_file_name: Name/path to the file containing the 'eigenvectors from the Hamiltonian' (eigenvec.dat).
+        :param eigenvectors_file_name: Name/path to the file containing the 'eigenvectors from the Hamiltonian' (eigenvec.out).
         :param x_plus_y_file_name: Name/path to the XplusY.DAT file.
         :param SPX_file_name: Name/path to the file containing the single particle excitations (SPX.DAT).
         :param basis_parameters_directory: Name/path to the directory containing basis set parameters (used to fit STOs to GTOs).
@@ -279,12 +279,12 @@ class DFTB_plus_parser(Molsoc):
 
         for i in self.requested_singlets:
             np = (len(self.triplet_states) +i -1) * self.ndim
-            # Changed Parser to remove reordering of CI coefficients to match the order of the transitions in SPX.DAT
+            # Changed Parser to remove reordering of CI coefficients to match the order of the transitions
             self.CI_coefficients.extend(CI_coefficients[np:np + self.ndim])
                 
         for i in self.requested_triplets:
             np = (i-1) * self.ndim
-            # Changed Parser to remove reordering of CI coefficients to match the order of the transitions in SPX.DAT
+            # Changed Parser to remove reordering of CI coefficients to match the order of the transitions
             self.CI_coefficients.extend(CI_coefficients[np:np + self.ndim])
                 
                     
