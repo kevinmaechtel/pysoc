@@ -276,16 +276,18 @@ class DFTB_plus_parser(Molsoc):
                     transitions.append(
                         "".join([chr(int(line.split()[i])) for i in [3, 5]])
                     )
-
+        
         for i in self.requested_singlets:
             np = (len(self.triplet_states) +i -1) * self.ndim
-            # Changed Parser to remove reordering of CI coefficients to match the order of the transitions
-            self.CI_coefficients.extend(CI_coefficients[np:np + self.ndim])
+            transition_coefficients = {transitions[k]: CI_coefficients[np+k] for k in range(self.ndim)}
+            for transition, coefficient in sorted(transition_coefficients.items()):
+                self.CI_coefficients.append(coefficient)
                 
         for i in self.requested_triplets:
             np = (i-1) * self.ndim
-            # Changed Parser to remove reordering of CI coefficients to match the order of the transitions
-            self.CI_coefficients.extend(CI_coefficients[np:np + self.ndim])
+            transition_coefficients = {transitions[k]: CI_coefficients[np+k] for k in range(self.ndim)}
+            for transition, coefficient in sorted(transition_coefficients.items()):
+                self.CI_coefficients.append(coefficient)
                 
                     
     def parse_geometries(self):
