@@ -1,0 +1,1550 @@
+{
+  "H": {
+    "atomic_number": 1,
+    "valence_shells": [
+      "1s"
+    ],
+    "fit_basis": true,
+    "compression": {
+      "density_compression": {
+        "type": "PowerCompression",
+        "parameters": {
+          "Power": 2,
+          "Radius": 2.0
+        }
+      },
+      "wave_compressions": {
+        "S": {
+          "type": "PowerCompression",
+          "parameters": {
+            "Power": 2,
+            "Radius": 2.4
+          }
+        }
+      }
+    },
+    "S": {
+      "occupation": 1.0,
+      "cutoff": 5.0,
+      "sto_exponents": [
+        0.5,
+        1.0,
+        2.0
+      ],
+      "sto_coeff_matrix": [
+        [
+          -1.791552259981233,
+          0.2161902386683726,
+          -0.006638223040415136
+        ],
+        [
+          5.6884724980961,
+          -1.855706816260715,
+          0.5569731757852676
+        ],
+        [
+          -1.35463372800245,
+          0.8952297663285008,
+          1.951351736089083
+        ]
+      ],
+      "relative_rms": 0.0007912003686517748,
+      "success": true,
+      "message": "`xtol` termination condition is satisfied.",
+      "fit_attempts": 13,
+      "fit_rmax": 15.0,
+      "compression_weight": false
+    }
+  },
+  "C": {
+    "atomic_number": 6,
+    "valence_shells": [
+      "2s",
+      "2p"
+    ],
+    "fit_basis": true,
+    "compression": {
+      "density_compression": {
+        "type": "PowerCompression",
+        "parameters": {
+          "Power": 2,
+          "Radius": 5.6
+        }
+      },
+      "wave_compressions": {
+        "S": {
+          "type": "PowerCompression",
+          "parameters": {
+            "Power": 2,
+            "Radius": 2.16
+          }
+        },
+        "P": {
+          "type": "PowerCompression",
+          "parameters": {
+            "Power": 2,
+            "Radius": 2.16
+          }
+        }
+      }
+    },
+    "S": {
+      "occupation": 2.0,
+      "cutoff": 5.0,
+      "sto_exponents": [
+        0.5,
+        1.14,
+        2.62,
+        6.0
+      ],
+      "sto_coeff_matrix": [
+        [
+          -0.1644025372341844,
+          0.02282265343884806,
+          -0.0007903088216967172
+        ],
+        [
+          -1.54019357117313,
+          0.1491752245166149,
+          0.08829319115250224
+        ],
+        [
+          24.19266793210095,
+          -26.99979623361357,
+          26.07988263034242
+        ],
+        [
+          -29.9123764194919,
+          -45.92590894886638,
+          -41.08982246939418
+        ]
+      ],
+      "relative_rms": 0.0005302051307836328,
+      "success": true,
+      "message": "`ftol` termination condition is satisfied.",
+      "fit_attempts": 47,
+      "fit_rmax": 15.0,
+      "compression_weight": false
+    },
+    "P": {
+      "occupation": 2.0,
+      "cutoff": 5.0,
+      "sto_exponents": [
+        0.5,
+        1.14,
+        2.62,
+        6.0
+      ],
+      "sto_coeff_matrix": [
+        [
+          0.03496597837073759,
+          -0.004153664262771042,
+          0.0001231027271280534
+        ],
+        [
+          -2.881732433843656,
+          0.9757929239197788,
+          -0.1025147182833292
+        ],
+        [
+          16.24879582421849,
+          -5.250317536790932,
+          10.40713843728526
+        ],
+        [
+          -5.078647761711787,
+          -11.7524181445362,
+          -8.709412344113508
+        ]
+      ],
+      "relative_rms": 0.00043336089372426136,
+      "success": true,
+      "message": "`xtol` termination condition is satisfied.",
+      "fit_attempts": 39,
+      "fit_rmax": 15.0,
+      "compression_weight": false
+    }
+  },
+  "N": {
+    "atomic_number": 7,
+    "valence_shells": [
+      "2s",
+      "2p"
+    ],
+    "fit_basis": true,
+    "compression": {
+      "density_compression": {
+        "type": "PowerCompression",
+        "parameters": {
+          "Power": 2,
+          "Radius": 8.8
+        }
+      },
+      "wave_compressions": {
+        "S": {
+          "type": "PowerCompression",
+          "parameters": {
+            "Power": 2,
+            "Radius": 1.76
+          }
+        },
+        "P": {
+          "type": "PowerCompression",
+          "parameters": {
+            "Power": 2,
+            "Radius": 1.76
+          }
+        }
+      }
+    },
+    "S": {
+      "occupation": 2.0,
+      "cutoff": 5.0,
+      "sto_exponents": [
+        0.5,
+        1.21,
+        2.9,
+        7.0
+      ],
+      "sto_coeff_matrix": [
+        [
+          -0.07170258410319076,
+          0.01088567626477419,
+          -0.0004078497225204238
+        ],
+        [
+          -2.106812581333111,
+          0.5198313513020721,
+          0.01359763787463034
+        ],
+        [
+          19.70011483430506,
+          -20.29075052935295,
+          29.83533846736509
+        ],
+        [
+          -26.7769874302089,
+          -47.46242612467156,
+          -54.65525043109115
+        ]
+      ],
+      "relative_rms": 0.0004878363367042627,
+      "success": true,
+      "message": "`ftol` termination condition is satisfied.",
+      "fit_attempts": 48,
+      "fit_rmax": 15.0,
+      "compression_weight": false
+    },
+    "P": {
+      "occupation": 3.0,
+      "cutoff": 5.0,
+      "sto_exponents": [
+        0.5,
+        1.21,
+        2.9,
+        7.0
+      ],
+      "sto_coeff_matrix": [
+        [
+          0.02402004627990996,
+          -0.003044211463126817,
+          9.565487633097568e-05
+        ],
+        [
+          -2.430057710731584,
+          0.909742172787528,
+          -0.1026511811580625
+        ],
+        [
+          17.42379724981596,
+          -4.462631527179859,
+          12.59502972833319
+        ],
+        [
+          -2.361508919027588,
+          -10.28668076585389,
+          -6.677614007777527
+        ]
+      ],
+      "relative_rms": 0.0005290868740492772,
+      "success": true,
+      "message": "`xtol` termination condition is satisfied.",
+      "fit_attempts": 10,
+      "fit_rmax": 15.0,
+      "compression_weight": false
+    }
+  },
+  "O": {
+    "atomic_number": 8,
+    "valence_shells": [
+      "2s",
+      "2p"
+    ],
+    "fit_basis": true,
+    "compression": {
+      "density_compression": {
+        "type": "PowerCompression",
+        "parameters": {
+          "Power": 2,
+          "Radius": 7.2
+        }
+      },
+      "wave_compressions": {
+        "S": {
+          "type": "PowerCompression",
+          "parameters": {
+            "Power": 2,
+            "Radius": 1.84
+          }
+        },
+        "P": {
+          "type": "PowerCompression",
+          "parameters": {
+            "Power": 2,
+            "Radius": 1.84
+          }
+        }
+      }
+    },
+    "S": {
+      "occupation": 2.0,
+      "cutoff": 5.0,
+      "sto_exponents": [
+        0.5,
+        1.26,
+        3.17,
+        8.0
+      ],
+      "sto_coeff_matrix": [
+        [
+          -0.1892874194741075,
+          0.02817982581449988,
+          -0.00104014692786099
+        ],
+        [
+          4.664855722373745,
+          -2.377801675163686,
+          0.4224634795966516
+        ],
+        [
+          4.404769827993477,
+          -11.39214957082804,
+          15.45302825451725
+        ],
+        [
+          -19.71240792787037,
+          -36.5148733212088,
+          -55.78994624633084
+        ]
+      ],
+      "relative_rms": 0.0007448462934294737,
+      "success": true,
+      "message": "`ftol` termination condition is satisfied.",
+      "fit_attempts": 49,
+      "fit_rmax": 15.0,
+      "compression_weight": false
+    },
+    "P": {
+      "occupation": 4.0,
+      "cutoff": 5.0,
+      "sto_exponents": [
+        0.5,
+        1.26,
+        3.17,
+        8.0
+      ],
+      "sto_coeff_matrix": [
+        [
+          0.002346958415721302,
+          -0.0002853352211541747,
+          8.553722095078336e-06
+        ],
+        [
+          -0.7364760210327521,
+          0.2581229529558551,
+          -0.02512046029420218
+        ],
+        [
+          22.41527202619595,
+          -13.41780217153132,
+          16.40437297624105
+        ],
+        [
+          -4.559768497361338,
+          -19.66342444963501,
+          -34.93595185046897
+        ]
+      ],
+      "relative_rms": 0.0002392385481557517,
+      "success": true,
+      "message": "`xtol` termination condition is satisfied.",
+      "fit_attempts": 13,
+      "fit_rmax": 15.0,
+      "compression_weight": false
+    }
+  },
+  "F": {
+    "atomic_number": 9,
+    "valence_shells": [
+      "2s",
+      "2p"
+    ],
+    "fit_basis": true,
+    "compression": {
+      "density_compression": {
+        "type": "PowerCompression",
+        "parameters": {
+          "Power": 2,
+          "Radius": 7.2
+        }
+      },
+      "wave_compressions": {
+        "S": {
+          "type": "PowerCompression",
+          "parameters": {
+            "Power": 2,
+            "Radius": 2.0
+          }
+        },
+        "P": {
+          "type": "PowerCompression",
+          "parameters": {
+            "Power": 2,
+            "Radius": 2.0
+          }
+        }
+      }
+    },
+    "S": {
+      "occupation": 2.0,
+      "cutoff": 5.0,
+      "sto_exponents": [
+        0.5,
+        1.03,
+        2.12,
+        4.37,
+        9.0
+      ],
+      "sto_coeff_matrix": [
+        [
+          -0.01221800868653783,
+          0.001115672754334508,
+          -2.467809869970288e-05
+        ],
+        [
+          1.69136964900507,
+          -0.4407938817420806,
+          0.03439154524386057
+        ],
+        [
+          4.574653979969602,
+          5.804093247978109,
+          -3.592652507409475
+        ],
+        [
+          -23.48528437997337,
+          34.03132773977231,
+          -34.97298510021674
+        ],
+        [
+          4.641732467042643,
+          24.87219785730849,
+          9.246636126798235
+        ]
+      ],
+      "relative_rms": 0.0003892417008815123,
+      "success": true,
+      "message": "`xtol` termination condition is satisfied.",
+      "fit_attempts": 25,
+      "fit_rmax": 15.0,
+      "compression_weight": false
+    },
+    "P": {
+      "occupation": 5.0,
+      "cutoff": 5.0,
+      "sto_exponents": [
+        0.5,
+        1.03,
+        2.12,
+        4.37,
+        9.0
+      ],
+      "sto_coeff_matrix": [
+        [
+          -0.01381651618282756,
+          0.001421349980851108,
+          -3.68639356587902e-05
+        ],
+        [
+          1.067255746101094,
+          -0.2876016921952871,
+          0.02473803238253347
+        ],
+        [
+          2.129202298789651,
+          2.728039230960939,
+          -1.918451825119304
+        ],
+        [
+          20.63487048801157,
+          -4.069913413273047,
+          3.431595054502306
+        ],
+        [
+          -0.9412545464055928,
+          -13.10059922911166,
+          -24.24315661413846
+        ]
+      ],
+      "relative_rms": 0.00036089228458714966,
+      "success": true,
+      "message": "`xtol` termination condition is satisfied.",
+      "fit_attempts": 25,
+      "fit_rmax": 15.0,
+      "compression_weight": false
+    }
+  },
+  "Mg": {
+    "atomic_number": 12,
+    "valence_shells": [
+      "3s",
+      "3p"
+    ],
+    "fit_basis": true,
+    "compression": {
+      "density_compression": {
+        "type": "PowerCompression",
+        "parameters": {
+          "Power": 2,
+          "Radius": 11.0
+        }
+      },
+      "wave_compressions": {
+        "S": {
+          "type": "PowerCompression",
+          "parameters": {
+            "Power": 2,
+            "Radius": 4.4
+          }
+        },
+        "P": {
+          "type": "PowerCompression",
+          "parameters": {
+            "Power": 2,
+            "Radius": 4.4
+          }
+        }
+      }
+    },
+    "S": {
+      "occupation": 2.0,
+      "cutoff": 5.0,
+      "sto_exponents": [
+        0.5,
+        1.11,
+        2.45,
+        5.42,
+        12.0
+      ],
+      "sto_coeff_matrix": [
+        [
+          -0.2644087843346956,
+          0.02853426436155834,
+          -0.0007693415829170796
+        ],
+        [
+          48.22137711732726,
+          -13.72979212841388,
+          1.142155692949407
+        ],
+        [
+          -134.2426935750853,
+          56.29743980223412,
+          -72.39165869732865
+        ],
+        [
+          96.0284590071681,
+          100.9262813395597,
+          141.2099947586037
+        ],
+        [
+          -3.078721721510016,
+          -15.71468010071307,
+          -6.750912226902832
+        ]
+      ],
+      "relative_rms": 0.0010764287393797947,
+      "success": true,
+      "message": "`xtol` termination condition is satisfied.",
+      "fit_attempts": 56,
+      "fit_rmax": 15.0,
+      "compression_weight": false
+    },
+    "P": {
+      "occupation": 0.0,
+      "cutoff": 5.0,
+      "sto_exponents": [
+        0.5,
+        1.11,
+        2.45,
+        5.42,
+        12.0
+      ],
+      "sto_coeff_matrix": [
+        [
+          -0.08660812494452359,
+          0.009476002252987266,
+          -0.0002595842327219601
+        ],
+        [
+          14.2126485661047,
+          -4.090701275721823,
+          0.3466970119661056
+        ],
+        [
+          -24.11620088811446,
+          0.545835578176683,
+          -14.72622729976305
+        ],
+        [
+          -12.02544528127853,
+          28.85423272801873,
+          -23.20443963047023
+        ],
+        [
+          4.080435372475371,
+          22.47616131180622,
+          37.338058224779
+        ]
+      ],
+      "relative_rms": 0.0009336529172636672,
+      "success": true,
+      "message": "`xtol` termination condition is satisfied.",
+      "fit_attempts": 12,
+      "fit_rmax": 15.0,
+      "compression_weight": false
+    }
+  },
+  "P": {
+    "atomic_number": 15,
+    "valence_shells": [
+      "3s",
+      "3p",
+      "3d"
+    ],
+    "fit_basis": true,
+    "compression": {
+      "density_compression": {
+        "type": "PowerCompression",
+        "parameters": {
+          "Power": 2,
+          "Radius": 7.2
+        }
+      },
+      "wave_compressions": {
+        "S": {
+          "type": "PowerCompression",
+          "parameters": {
+            "Power": 2,
+            "Radius": 3.6
+          }
+        },
+        "P": {
+          "type": "PowerCompression",
+          "parameters": {
+            "Power": 2,
+            "Radius": 3.6
+          }
+        },
+        "D": {
+          "type": "PowerCompression",
+          "parameters": {
+            "Power": 2,
+            "Radius": 4.4
+          }
+        }
+      }
+    },
+    "S": {
+      "occupation": 2.0,
+      "cutoff": 5.0,
+      "sto_exponents": [
+        0.5,
+        1.17,
+        2.74,
+        6.41,
+        15.0
+      ],
+      "sto_coeff_matrix": [
+        [
+          -0.4614354625734203,
+          0.06029086395589343,
+          -0.00197454091646048
+        ],
+        [
+          27.20217023418871,
+          -9.779454829632796,
+          1.147685942915468
+        ],
+        [
+          -53.44297799934658,
+          3.927659346155227,
+          -29.83265707105681
+        ],
+        [
+          31.04844372657971,
+          14.60708573776373,
+          57.5278568541339
+        ],
+        [
+          5.8055249983068,
+          9.693964721149035,
+          29.13643041444092
+        ]
+      ],
+      "relative_rms": 0.0007421243491052591,
+      "success": true,
+      "message": "`xtol` termination condition is satisfied.",
+      "fit_attempts": 59,
+      "fit_rmax": 15.0,
+      "compression_weight": false
+    },
+    "P": {
+      "occupation": 3.0,
+      "cutoff": 5.0,
+      "sto_exponents": [
+        0.5,
+        1.17,
+        2.74,
+        6.41,
+        15.0
+      ],
+      "sto_coeff_matrix": [
+        [
+          -0.05839032206790919,
+          0.007062078596287541,
+          -0.0002126398476364081
+        ],
+        [
+          6.453377664441847,
+          -2.211289797715885,
+          0.2278874482235003
+        ],
+        [
+          5.470272780342641,
+          -17.10334385672541,
+          2.534926642141303
+        ],
+        [
+          -61.8793141152009,
+          42.26855475380091,
+          -155.6185477368893
+        ],
+        [
+          16.1403873041857,
+          90.57705409040825,
+          276.613799234025
+        ]
+      ],
+      "relative_rms": 0.0011220142270790825,
+      "success": true,
+      "message": "`ftol` termination condition is satisfied.",
+      "fit_attempts": 32,
+      "fit_rmax": 15.0,
+      "compression_weight": false
+    },
+    "D": {
+      "occupation": 0.0,
+      "cutoff": 5.0,
+      "sto_exponents": [
+        0.5,
+        1.17,
+        2.74,
+        6.41,
+        15.0
+      ],
+      "sto_coeff_matrix": [
+        [
+          -0.005093529557355597,
+          0.0005427918673648906,
+          -1.434604113091984e-05
+        ],
+        [
+          2.639686095021222,
+          -0.7336460129217828,
+          0.05613275442067707
+        ],
+        [
+          -3.738531150955259,
+          3.02022461935697,
+          -3.492896601402815
+        ],
+        [
+          11.65315303869981,
+          -4.341021472867049,
+          27.94314836852118
+        ],
+        [
+          -4.657149592744592,
+          -11.74411059188676,
+          -114.027716509177
+        ]
+      ],
+      "relative_rms": 0.000491479450674643,
+      "success": true,
+      "message": "`ftol` termination condition is satisfied.",
+      "fit_attempts": 4,
+      "fit_rmax": 15.0,
+      "compression_weight": false
+    }
+  },
+  "S": {
+    "atomic_number": 16,
+    "valence_shells": [
+      "3s",
+      "3p",
+      "3d"
+    ],
+    "fit_basis": true,
+    "compression": {
+      "density_compression": {
+        "type": "PowerCompression",
+        "parameters": {
+          "Power": 2,
+          "Radius": 7.2
+        }
+      },
+      "wave_compressions": {
+        "S": {
+          "type": "PowerCompression",
+          "parameters": {
+            "Power": 2,
+            "Radius": 3.8
+          }
+        },
+        "P": {
+          "type": "PowerCompression",
+          "parameters": {
+            "Power": 2,
+            "Radius": 3.8
+          }
+        },
+        "D": {
+          "type": "PowerCompression",
+          "parameters": {
+            "Power": 2,
+            "Radius": 4.4
+          }
+        }
+      }
+    },
+    "S": {
+      "occupation": 2.0,
+      "cutoff": 5.0,
+      "sto_exponents": [
+        0.5,
+        1.19,
+        2.83,
+        6.73,
+        16.0
+      ],
+      "sto_coeff_matrix": [
+        [
+          -0.3013548037490198,
+          0.04027678180505616,
+          -0.001347733839421736
+        ],
+        [
+          19.84779842535646,
+          -7.172737232184883,
+          0.8402702669946217
+        ],
+        [
+          -44.37181006522554,
+          9.75591123803082,
+          -22.62753322987966
+        ],
+        [
+          28.93442856516269,
+          8.073488558411366,
+          58.51714790595008
+        ],
+        [
+          7.25224169703165,
+          15.59217454979709,
+          42.95746098647644
+        ]
+      ],
+      "relative_rms": 0.0006463356605643085,
+      "success": true,
+      "message": "`ftol` termination condition is satisfied.",
+      "fit_attempts": 10,
+      "fit_rmax": 15.0,
+      "compression_weight": false
+    },
+    "P": {
+      "occupation": 4.0,
+      "cutoff": 5.0,
+      "sto_exponents": [
+        0.5,
+        1.19,
+        2.83,
+        6.73,
+        16.0
+      ],
+      "sto_coeff_matrix": [
+        [
+          -0.03930331513254947,
+          0.00481418977646053,
+          -0.0001466346582225004
+        ],
+        [
+          5.46240181659696,
+          -1.853004192513868,
+          0.1865647760462834
+        ],
+        [
+          1.496068669169843,
+          -8.432273385091282,
+          0.9045385655057483
+        ],
+        [
+          -57.34208638446948,
+          41.38516417026895,
+          -139.513508564029
+        ],
+        [
+          9.985031675137437,
+          69.65476204603901,
+          243.865429945566
+        ]
+      ],
+      "relative_rms": 0.0009969790760611032,
+      "success": true,
+      "message": "`xtol` termination condition is satisfied.",
+      "fit_attempts": 48,
+      "fit_rmax": 15.0,
+      "compression_weight": false
+    },
+    "D": {
+      "occupation": 0.0,
+      "cutoff": 5.0,
+      "sto_exponents": [
+        0.5,
+        1.19,
+        2.83,
+        6.73,
+        16.0
+      ],
+      "sto_coeff_matrix": [
+        [
+          -0.00317726074846541,
+          0.0003352722666033935,
+          -8.752854492137662e-06
+        ],
+        [
+          2.425559983935214,
+          -0.6650990819942861,
+          0.04945172094893763
+        ],
+        [
+          -3.25734940783616,
+          4.260082227834238,
+          -3.743673198697097
+        ],
+        [
+          19.14032496827414,
+          -18.15620440924745,
+          51.7465329952224
+        ],
+        [
+          -10.52543996416862,
+          -28.18509508842697,
+          -317.2379093609613
+        ]
+      ],
+      "relative_rms": 0.00045467052837974285,
+      "success": true,
+      "message": "`xtol` termination condition is satisfied.",
+      "fit_attempts": 39,
+      "fit_rmax": 15.0,
+      "compression_weight": false
+    }
+  },
+  "Cl": {
+    "atomic_number": 17,
+    "valence_shells": [
+      "3s",
+      "3p"
+    ],
+    "fit_basis": true,
+    "compression": {
+      "density_compression": {
+        "type": "PowerCompression",
+        "parameters": {
+          "Power": 2,
+          "Radius": 12.0
+        }
+      },
+      "wave_compressions": {
+        "S": {
+          "type": "PowerCompression",
+          "parameters": {
+            "Power": 2,
+            "Radius": 3.04
+          }
+        },
+        "P": {
+          "type": "PowerCompression",
+          "parameters": {
+            "Power": 2,
+            "Radius": 3.04
+          }
+        }
+      }
+    },
+    "S": {
+      "occupation": 2.0,
+      "cutoff": 5.0,
+      "sto_exponents": [
+        0.5,
+        1.21,
+        2.92,
+        7.04,
+        17.0
+      ],
+      "sto_coeff_matrix": [
+        [
+          -0.3298228336537187,
+          0.04544939941106248,
+          -0.001563168448678382
+        ],
+        [
+          16.0920443061954,
+          -6.453438290380937,
+          0.8549335357905795
+        ],
+        [
+          -24.35007649798675,
+          -6.82264121659939,
+          -7.635325085389107
+        ],
+        [
+          5.324238823470909,
+          -7.789165095383235,
+          -50.56797458156213
+        ],
+        [
+          16.31758363176788,
+          61.03405616600945,
+          149.6725024492422
+        ]
+      ],
+      "relative_rms": 0.000652778453394341,
+      "success": true,
+      "message": "`ftol` termination condition is satisfied.",
+      "fit_attempts": 44,
+      "fit_rmax": 15.0,
+      "compression_weight": false
+    },
+    "P": {
+      "occupation": 5.0,
+      "cutoff": 5.0,
+      "sto_exponents": [
+        0.5,
+        1.21,
+        2.92,
+        7.04,
+        17.0
+      ],
+      "sto_coeff_matrix": [
+        [
+          -0.03139114860123011,
+          0.003970295642274605,
+          -0.0001245057252459839
+        ],
+        [
+          3.153452404419417,
+          -1.195449994419415,
+          0.1354602947668603
+        ],
+        [
+          17.3230986683233,
+          -21.77400432563743,
+          11.58322080550708
+        ],
+        [
+          -87.9907428748508,
+          48.96957085532853,
+          -265.5973846582265
+        ],
+        [
+          17.02338484627234,
+          115.9262619815115,
+          425.8020807054104
+        ]
+      ],
+      "relative_rms": 0.0010178713307928502,
+      "success": true,
+      "message": "`xtol` termination condition is satisfied.",
+      "fit_attempts": 39,
+      "fit_rmax": 15.0,
+      "compression_weight": false
+    }
+  },
+  "Zn": {
+    "atomic_number": 30,
+    "valence_shells": [
+      "3d",
+      "4s"
+    ],
+    "fit_basis": true,
+    "compression": {
+      "density_compression": {
+        "type": "PowerCompression",
+        "parameters": {
+          "Power": 2,
+          "Radius": 4.0
+        }
+      },
+      "wave_compressions": {
+        "S": {
+          "type": "PowerCompression",
+          "parameters": {
+            "Power": 2,
+            "Radius": 1.92
+          }
+        },
+        "D": {
+          "type": "PowerCompression",
+          "parameters": {
+            "Power": 2,
+            "Radius": 1.92
+          }
+        }
+      }
+    },
+    "D": {
+      "occupation": 10.0,
+      "cutoff": 5.0,
+      "sto_exponents": [
+        0.5,
+        1.96,
+        7.66,
+        30.0
+      ],
+      "sto_coeff_matrix": [
+        [
+          -0.002196111406082334,
+          0.0003537358210357524,
+          -1.347841243000437e-05
+        ],
+        [
+          6.700382593672816,
+          -3.646417882421098,
+          0.52634815270177
+        ],
+        [
+          281.4718685157312,
+          -293.0360789505159,
+          669.0589259534169
+        ],
+        [
+          -44.78915270013015,
+          2064.752078167422,
+          -16019.35750366887
+        ]
+      ],
+      "relative_rms": 0.001010280023830311,
+      "success": true,
+      "message": "`xtol` termination condition is satisfied.",
+      "fit_attempts": 13,
+      "fit_rmax": 15.0,
+      "compression_weight": false
+    },
+    "S": {
+      "occupation": 2.0,
+      "cutoff": 5.0,
+      "sto_exponents": [
+        0.5,
+        1.96,
+        7.66,
+        30.0
+      ],
+      "sto_coeff_matrix": [
+        [
+          -0.5368639186258848,
+          0.1189010845123938,
+          -0.006174722375662526
+        ],
+        [
+          -16.68348538220499,
+          18.93392962050494,
+          1.148023661065355
+        ],
+        [
+          34.73234380007943,
+          51.42486633986341,
+          130.3801439612809
+        ],
+        [
+          -33.67345609478397,
+          -328.5978876494987,
+          -2838.093913860979
+        ]
+      ],
+      "relative_rms": 0.00471078435447226,
+      "success": true,
+      "message": "`xtol` termination condition is satisfied.",
+      "fit_attempts": 66,
+      "fit_rmax": 15.0,
+      "compression_weight": false
+    }
+  },
+  "Br": {
+    "atomic_number": 35,
+    "valence_shells": [
+      "4s",
+      "4p",
+      "4d"
+    ],
+    "fit_basis": true,
+    "compression": {
+      "density_compression": {
+        "type": "PowerCompression",
+        "parameters": {
+          "Power": 2.0,
+          "Radius": 10.0
+        }
+      },
+      "wave_compressions": {
+        "S": {
+          "type": "PowerCompression",
+          "parameters": {
+            "Power": 2,
+            "Radius": 6.0
+          }
+        },
+        "P": {
+          "type": "PowerCompression",
+          "parameters": {
+            "Power": 2,
+            "Radius": 6.0
+          }
+        },
+        "D": {
+          "type": "PowerCompression",
+          "parameters": {
+            "Power": 2,
+            "Radius": 6.0
+          }
+        }
+      }
+    },
+    "S": {
+      "occupation": 2.0,
+      "cutoff": 5.0,
+      "sto_exponents": [
+        0.5,
+        1.17,
+        2.74,
+        6.4,
+        35.0
+      ],
+      "sto_coeff_matrix": [
+        [
+          1.333234298492068,
+          -0.1874012637579966,
+          0.006592272055200687
+        ],
+        [
+          -18.95185804863634,
+          9.062531482660805,
+          -1.668017034615879
+        ],
+        [
+          72.99182252062842,
+          -60.61026042743703,
+          54.36443770860712
+        ],
+        [
+          -38.47639310966458,
+          -175.528652030072,
+          -254.135077823312
+        ],
+        [
+          -36.0579681211868,
+          -328.5844023447377,
+          -3932.4175859649
+        ]
+      ],
+      "relative_rms": 0.0013838665965070689,
+      "success": true,
+      "message": "`ftol` termination condition is satisfied.",
+      "fit_attempts": 65,
+      "fit_rmax": 15.0,
+      "compression_weight": false
+    },
+    "P": {
+      "occupation": 5.0,
+      "cutoff": 5.0,
+      "sto_exponents": [
+        0.5,
+        1.17,
+        2.74,
+        6.4,
+        35.0
+      ],
+      "sto_coeff_matrix": [
+        [
+          -0.2638095978633556,
+          0.03352716195701855,
+          -0.001059657473571359
+        ],
+        [
+          16.80078080358874,
+          -5.920921385006525,
+          0.6900112815791416
+        ],
+        [
+          -118.7413484769996,
+          105.5528248492665,
+          -52.70488541156485
+        ],
+        [
+          156.2479059839231,
+          -125.5170068267184,
+          727.640888138359
+        ],
+        [
+          115.7416579895087,
+          293.427086450929,
+          23271.51849681195
+        ]
+      ],
+      "relative_rms": 0.0014381124126755143,
+      "success": true,
+      "message": "`xtol` termination condition is satisfied.",
+      "fit_attempts": 52,
+      "fit_rmax": 15.0,
+      "compression_weight": false
+    },
+    "D": {
+      "occupation": 0.0,
+      "cutoff": 5.0,
+      "sto_exponents": [
+        0.5,
+        1.17,
+        2.74,
+        6.4,
+        35.0
+      ],
+      "sto_coeff_matrix": [
+        [
+          0.01814216166898411,
+          -0.002092934378300587,
+          5.964952575332338e-05
+        ],
+        [
+          0.07025424465016059,
+          0.3524554205231876,
+          -0.06126184540397624
+        ],
+        [
+          10.01241904138717,
+          -8.065408717737085,
+          2.700930818372238
+        ],
+        [
+          -105.2487509691268,
+          147.4525910876803,
+          -208.8718203484214
+        ],
+        [
+          -132.1481486028187,
+          1927.932209448344,
+          -32168.79793746092
+        ]
+      ],
+      "relative_rms": 0.0008451046786209902,
+      "success": true,
+      "message": "`xtol` termination condition is satisfied.",
+      "fit_attempts": 53,
+      "fit_rmax": 15.0,
+      "compression_weight": false
+    }
+  },
+  "I": {
+    "atomic_number": 53,
+    "valence_shells": [
+      "5s",
+      "5p",
+      "5d"
+    ],
+    "fit_basis": true,
+    "compression": {
+      "density_compression": {
+        "type": "PowerCompression",
+        "parameters": {
+          "Power": 2.0,
+          "Radius": 11.0
+        }
+      },
+      "wave_compressions": {
+        "S": {
+          "type": "PowerCompression",
+          "parameters": {
+            "Power": 2,
+            "Radius": 6.3
+          }
+        },
+        "P": {
+          "type": "PowerCompression",
+          "parameters": {
+            "Power": 2,
+            "Radius": 6.3
+          }
+        },
+        "D": {
+          "type": "PowerCompression",
+          "parameters": {
+            "Power": 2,
+            "Radius": 7.8
+          }
+        }
+      }
+    },
+    "S": {
+      "occupation": 2.0,
+      "cutoff": 5.0,
+      "sto_exponents": [
+        0.5,
+        1.27,
+        3.23,
+        8.21,
+        53.0
+      ],
+      "sto_coeff_matrix": [
+        [
+          -0.3451310800202924,
+          0.05589275352114811,
+          -0.002233474072846084
+        ],
+        [
+          14.92343405677558,
+          -3.680867796251363,
+          0.5148568663755749
+        ],
+        [
+          -64.6980272659076,
+          32.20706566059233,
+          -44.19807477260578
+        ],
+        [
+          21.93126731698321,
+          440.1367820644828,
+          90.8948771991037
+        ],
+        [
+          52.3022687514495,
+          629.3224468439228,
+          15845.84628794628
+        ]
+      ],
+      "relative_rms": 0.001173415063102673,
+      "success": true,
+      "message": "`ftol` termination condition is satisfied.",
+      "fit_attempts": 45,
+      "fit_rmax": 15.0,
+      "compression_weight": false
+    },
+    "P": {
+      "occupation": 5.0,
+      "cutoff": 5.0,
+      "sto_exponents": [
+        0.5,
+        1.27,
+        3.23,
+        8.21,
+        53.0
+      ],
+      "sto_coeff_matrix": [
+        [
+          0.3040255862888106,
+          -0.0424418592205686,
+          0.001458805774955741
+        ],
+        [
+          -11.37811468170526,
+          6.770228836255466,
+          -1.076840273453751
+        ],
+        [
+          107.2792070069428,
+          -147.4562709887599,
+          91.65648871843094
+        ],
+        [
+          -141.3799172512687,
+          386.5590370828822,
+          -2211.689856927113
+        ],
+        [
+          -332.5061411442576,
+          995.0409979274312,
+          -191189.1267508498
+        ]
+      ],
+      "relative_rms": 0.003501022956780241,
+      "success": true,
+      "message": "`xtol` termination condition is satisfied.",
+      "fit_attempts": 49,
+      "fit_rmax": 15.0,
+      "compression_weight": false
+    },
+    "D": {
+      "occupation": 0.0,
+      "cutoff": 5.0,
+      "sto_exponents": [
+        0.5,
+        1.27,
+        3.23,
+        8.21,
+        53.0
+      ],
+      "sto_coeff_matrix": [
+        [
+          -0.02126034547207674,
+          0.002745900568982148,
+          -8.647301095334856e-05
+        ],
+        [
+          1.113737431340987,
+          -0.0620053692602342,
+          0.04521909788495592
+        ],
+        [
+          -44.24560144740954,
+          45.86034666851239,
+          -16.76659429877183
+        ],
+        [
+          298.5652117796258,
+          -819.9152688489488,
+          1198.070663807958
+        ],
+        [
+          1005.388440769809,
+          -31191.29765089571,
+          589387.4949235953
+        ]
+      ],
+      "relative_rms": 0.001933955802883888,
+      "success": true,
+      "message": "`xtol` termination condition is satisfied.",
+      "fit_attempts": 14,
+      "fit_rmax": 15.0,
+      "compression_weight": false
+    }
+  }
+}
