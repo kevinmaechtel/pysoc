@@ -48,7 +48,7 @@ def main(
     :param output: Path to a directory where intermediate files will be written. If none is given, a temporary directory will be used (in which case these intermediate files will be unavailable to the user).
     """
     # Get our controlling object.
-    SOC = Calculator(calc_file = calc_file, calculation = calculation, num_singlets = num_singlets, num_triplets = num_triplets, QM_program = QM_program)
+    SOC = Calculator(calc_file = calc_file, calculation = calculation, num_singlets = num_singlets, num_triplets = num_triplets, QM_program = QM_program, **aux_files)
     
     # Compute SOC.
     SOC.calculate(output = output, SOC_scale = SOC_scale, include_ground = include_ground, CI_coefficient_threshold = CI_coefficient_threshold)
