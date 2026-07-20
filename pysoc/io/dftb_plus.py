@@ -263,8 +263,11 @@ class DFTB_plus_parser(Molsoc):
         # Read in all coefficients.
         with open(self.x_plus_y_file_name, 'r') as x_plus_y_file:
             for line in x_plus_y_file:
-                if(line.split()[1] not in ['S','T'] and float(line.split()[0]) != self.ndim): #6 data each line
-                    CI_coefficients.extend(line.split())
+                parts = line.split()
+                if len(parts) > 1 and parts[1] not in ['S','T'] and float(parts[0]) != self.ndim: #6 data each line
+                    CI_coefficients.extend(parts)
+                elif len(parts) == 1 and float(parts[0]) != self.ndim:
+                    CI_coefficients.append(parts[0]) 
                     
         # Next we read in excited state transitions (?)
         # We use this to reorder our list later.
