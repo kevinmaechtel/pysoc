@@ -24,8 +24,6 @@ module trans_dipole
     character(10) :: multip
     real(dpr)     :: dip_statint_temp(3)
     
-    dip_singl = 0.0
-    dip_tripl = 0.0    
     dip_statint_temp = 0.0
     print *, "input%ene_s", input%ene_s
     print *, "input%ene_t", input%ene_t

@@ -36,6 +36,7 @@ def main(
         include_ground = None,
         CI_coefficient_threshold = None,
         print_csv = None,
+        soc_format = None,
         **aux_files):
     """
     Main program function for PySOC controller program.
@@ -54,20 +55,21 @@ def main(
     SOC.calculate(output = output, SOC_scale = SOC_scale, include_ground = include_ground, CI_coefficient_threshold = CI_coefficient_threshold)
     
     # Finally, output results depending on requested format.
+    soc_table = SOC.soc_td.cartesian_table if soc_format == "xyz" else SOC.soc_td.table
     if print_csv:
         # CSV.
         string_file = io.StringIO()
-        
+
         # Get our CSV writer.
         writer = csv.writer(string_file)
-        
+
         # Write.
-        writer.writerows(SOC.soc_td.table)
+        writer.writerows(soc_table)
         output_string = string_file.getvalue()
     else:
         # Text table.
         output_string = tabulate(
-            SOC.soc_td.table,
+            soc_table,
             headers = "firstrow",
             numalign = "decimal",
             stralign = "center",
@@ -92,6 +94,7 @@ if __name__ == '__main__':
     parser.add_argument("--rwf_file", dest = "rwf_file_name", help = "Gaussian .rwf file. If this is not given explicitly, the location of this file will be guessed from the given QM calculation output file.", default = None, type = str)
     parser.add_argument("--fitted_basis", dest = "fitted_basis_directory", help = "Directory containing fitted basis set for use with DFTB+", type = str, default = None)
     parser.add_argument("-c", "--CSV", dest = "print_csv", help = "Output in CSV format", action = "store_true")
+    parser.add_argument("-f", "--format", dest = "soc_format", help = "SOCME output format: 'ms' (default) for the (+1, 0, -1) magnetic-sublevel decomposition, or 'xyz' for the Cartesian (Hx, Hy, Hz) decomposition. Both share the same RSS. 'xyz' requires a soc_td build with Cartesian output support.", choices = ("ms", "xyz"), default = "ms")
     parser.add_argument("-s", "--singlets", dest = "num_singlets", help = "The number of singlet excited states to calculate SOC for. The default is all available states.", type = int, default = None)
     parser.add_argument("-t", "--triplets", dest = "num_triplets", help = "The number of triplet excited states to calculate SOC for. The default is all available states.", type = int, default = None)
     parser.add_argument("-p", "--program", dest = "QM_program", help = "The QM program that the excited states were calculated with. If None is given, the program will be guessed from the given calc_file.", choices = ["Gaussian", "DFTB+"], default = None)

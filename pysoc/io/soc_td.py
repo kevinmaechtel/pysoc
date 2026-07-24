@@ -14,74 +14,95 @@ class SOC():
     Class to represent spin orbit coupling values.
     """
     
-    def __init__(self, singlet_state, triplet_state, positive_one, zero, negative_one):
+    def __init__(self, singlet_state, triplet_state, positive_one, zero, negative_one, x=None, y=None, z=None):
         """
         Constructor for SOC class.
-        
+
         :param singlet_state: Symbol for the singlet state that this coupling is between (eg, "S(1)").
         :param triplet_state: Symbol for the triplet state that this coupling is between (eg, "T(1)").
         :param positive_one: SOC with quantum number +1.
         :param zero: SOC with quantum number 0.
         :param negative_one: SOC with quantum number -1.
+        :param x: Cartesian (Hx) SOC component, if available (magnitude, cm-1).
+        :param y: Cartesian (Hy) SOC component, if available (magnitude, cm-1).
+        :param z: Cartesian (Hz) SOC component, if available (magnitude, cm-1).
         """
         self.singlet_state = singlet_state
         self.triplet_state = triplet_state
         self.positive_one = positive_one
         self.zero = zero
         self.negative_one = negative_one
-        
+        self.x = x
+        self.y = y
+        self.z = z
+
     @classmethod
     def from_soc_td(self, soc_td_line, molsoc):
         """
         Create a SOC class from the output produced by soc_td.
-        
+
         :param soc_td_line: A line of output from the soc_out.dat file.
         :param molsoc: The molsoc parser.
         """
         # Split on whitespace.
         parts = soc_td_line.split()
-        
+
         # Our state labels are in the second part, which has the format <S*|Hso|T*,1,0,-1>
         identifier = parts[1].split("|")
-        
+
         singlet_state = identifier[0][1:]
         triplet_state = identifier[2].split(",")[0]
-        
+
         # Get the number of each state from S(***) or T(***)
         singlet_num = int(singlet_state[2:-1])
         triplet_num = int(triplet_state[2:-1])
-        
+
         #singlet_level = molsoc.singlet_levels[singlet_num-1] if singlet_num > 0 else None
         #triplet_level = molsoc.triplet_levels[triplet_num-1] if triplet_num > 0 else None
-        
+
+        # Cartesian (Hx, Hy, Hz) components, if soc_td was built with them (7 numeric
+        # fields after the label instead of 4). Older soc_out.dat files (or binaries
+        # without this change) only have 4, so fall back to None rather than erroring.
+        has_cartesian = len(parts) >= 10
+        x = float(parts[7]) if has_cartesian else None
+        y = float(parts[8]) if has_cartesian else None
+        z = float(parts[9]) if has_cartesian else None
+
         # Use our normal constructor.
-        return self(singlet_state, triplet_state, float(parts[4]), float(parts[5]), float(parts[6]))
-    
-    
+        return self(singlet_state, triplet_state, float(parts[4]), float(parts[5]), float(parts[6]), x, y, z)
+
+
     @property
     def root_sum_square(self):
         """
         The root sum square of this SOC.
         """
         return math.sqrt(self.positive_one **2 + self.zero **2 + self.negative_one **2)
-        
+
     def __float__(self):
         """
         Floatify this SOC class.
         """
         return self.root_sum_square
-    
+
     def __str__(self):
         """
         Stringify this SOC class.
         """
         return "<{}|Hso|{}> (RSS, +1, 0, -1) (cm-1): {:10.5f} {:10.5f} {:10.5f} {:10.5f}".format(self.singlet_state, self.triplet_state, self.root_sum_square, self.positive_one, self.zero, self.negative_one)
-    
+
     def list(self):
         """
         Listify this SOC.
         """
         return [self.singlet_state, self.triplet_state, self.root_sum_square, self.positive_one, self.zero, self.negative_one]
+
+    def cartesian_list(self):
+        """
+        Listify this SOC in Cartesian (Hx, Hy, Hz) format instead of the (+1, 0, -1)
+        magnetic-sublevel format. x/y/z are None if soc_td didn't provide them.
+        """
+        return [self.singlet_state, self.triplet_state, self.root_sum_square, self.x, self.y, self.z]
 
 class Soc_td():
     """
@@ -224,15 +245,28 @@ class Soc_td():
     @property
     def table(self):
         """
-        Get calculated SOC values in a list of list (table format).
+        Get calculated SOC values in a list of list (table format), in the
+        (+1, 0, -1) magnetic-sublevel format.
         """
         # Get headers
         table = [["Singlet", "Triplet", "RSS (cm-1)", "+1 (cm-1)", "0 (cm-1)", "-1 (cm-1)"]]
-         
+
         # Add data.
         table.extend([SOC.list() for SOC in self.SOC])
-        
+
         # Done.
+        return table
+
+    @property
+    def cartesian_table(self):
+        """
+        Get calculated SOC values in a list of list (table format), in
+        Cartesian (Hx, Hy, Hz) format instead of (+1, 0, -1). Columns are
+        None if the soc_td binary in use doesn't provide Cartesian output
+        (older soc_out.dat format - only 4 numeric fields instead of 7).
+        """
+        table = [["Singlet", "Triplet", "RSS (cm-1)", "Hx (cm-1)", "Hy (cm-1)", "Hz (cm-1)"]]
+        table.extend([SOC.cartesian_list() for SOC in self.SOC])
         return table
         
         

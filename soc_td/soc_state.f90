@@ -17,12 +17,13 @@ module soc_state
   contains
 
   subroutine statint()
-    
+
     integer       :: k, ki
     integer       :: si, ti
     real          :: sum_soc, soc_sub(3)
+    real          :: cart(3)
     complex(dpr)  :: soc_statint_temp(3)
-        
+
     soc_statint_temp = (0.0, 0.0)
     open(unit=17, file='soc_out.dat', status='replace')
 
@@ -45,7 +46,17 @@ module soc_state
           soc_sub(:) = sqrt(soc_statint(si+1, k, :)*conjg(soc_statint(si+1, k, :)))
           sum_soc=sum(soc_statint(si+1, k, :)*conjg(soc_statint(si+1, k, :)))
           sum_soc=sqrt(sum_soc)
-          write(17, 1715) si, k, sum_soc, (soc_sub(ki), ki=1,3)
+          ! Cartesian (Hx, Hy, Hz) SOC components, recovered from the already-
+          ! computed (+1, 0, -1) ladder values via the exact (lossless, linear)
+          ! inverse of the ladder combination applied in cal_socci_ex/eg:
+          !   soc_statint(...,1) = 1/sqrt(2) * (Hx + i*Hy)   =>  Hx=sqrt(2)*Re, Hy=sqrt(2)*Im
+          !   soc_statint(...,2) = Hz                        =>  Hz=Re (Im is always 0)
+          ! This does not change the (+1,0,-1)/RSS calculation above at all -
+          ! it only reads its already-validated output a second way.
+          cart(1) = sqrt(2.0)*real(soc_statint(si+1, k, 1))
+          cart(2) = sqrt(2.0)*aimag(soc_statint(si+1, k, 1))
+          cart(3) = real(soc_statint(si+1, k, 2))
+          write(17, 1715) si, k, sum_soc, (soc_sub(ki), ki=1,3), (abs(cart(ki)), ki=1,3)
           write(*, 1716) si, k, sum_soc, (soc_statint(si+1, k, ki), ki=1,3)
         enddo
         !write(*, 1717) (soc_statint(si+1, k, 1), k=1,input%n_tripl)
@@ -63,7 +74,10 @@ module soc_state
           soc_sub(:) = sqrt(soc_statint(si, k, :)*conjg(soc_statint(si+1, k, :)))
           sum_soc=sum(soc_statint(si, k, :)*conjg(soc_statint(si+1, k, :)))
           sum_soc=sqrt(sum_soc)
-          write(17, 1715) si, k, sum_soc, (soc_sub(ki), ki=1,3)
+          cart(1) = sqrt(2.0)*real(soc_statint(si, k, 1))
+          cart(2) = sqrt(2.0)*aimag(soc_statint(si, k, 1))
+          cart(3) = real(soc_statint(si, k, 2))
+          write(17, 1715) si, k, sum_soc, (soc_sub(ki), ki=1,3), (abs(cart(ki)), ki=1,3)
           write(*, 1716) si, k, sum_soc, (soc_statint(si, k, ki), ki=1,3)
         enddo
         !write(*, 1717) (soc_statint(si, k, 1), k=1,input%n_tripl)
@@ -71,7 +85,7 @@ module soc_state
         !write(*, 1717) (soc_statint(si, k, 3), k=1,input%n_tripl)
       enddo
     endif
-    1715 format('sum_soc, ','<S(',I0,')|Hso|T(',I0,'),1,0,-1> (cm-1): ',4f15.5)
+    1715 format('sum_soc, ','<S(',I0,')|Hso|T(',I0,'),1,0,-1,Hx,Hy,Hz> (cm-1): ',7f15.5)
     1716 format('sum_soc, ','<S(',I0,')|Hso|T(',I0,'),1,0,-1> (cm-1): ',7f15.5)  
     1717 format(50f15.5)  
     close(17)   

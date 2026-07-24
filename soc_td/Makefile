@@ -12,9 +12,9 @@ LIBS = -Wl,--start-group $(LIBDIR)/libmkl_intel_ilp64.a\
        -lpthread -lm
 LIBS =
 
-F90 =ifort
-#F90 = gfortran
-F90FLAGS = -O -heap-arrays 1024
+#F90 =ifort
+F90 = gfortran
+F90FLAGS = -O 
 
 all: $(PROG)
 
