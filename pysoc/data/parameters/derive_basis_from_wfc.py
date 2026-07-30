@@ -19,42 +19,41 @@ coefficient-for-coefficient. Use compare_basis_curves (which compares the
 actual contracted radial functions) rather than raw coefficient diffs to
 judge whether a derived basis matches a reference one.
 """
+
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
+from collections.abc import Callable
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import numpy as np
 from scipy.optimize import least_squares
 
-L2CHAR = {0: 'S', 1: 'P', 2: 'D', 3: 'F'}
+L2CHAR = {0: "S", 1: "P", 2: "D", 3: "F"}
 CHAR2L = {v: k for k, v in L2CHAR.items()}
 
 DEFAULT_RMAX = 12.0
 DEFAULT_NGRID = 2000
-DEFAULT_WEIGHT = 'r2'
+DEFAULT_WEIGHT = "r2"
 DEFAULT_NSTARTS = 60
 DEFAULT_SEED = 0
+DEFAULT_LSQ_TOL = 1e-10
 
 
-def require_search(
-        pattern: str,
-        text: str,
-        flags: int = 0
-    ) -> re.Match[str]:
+def require_search(pattern: str, text: str, flags: int = 0) -> re.Match[str]:
     """Like re.search, but raise ValueError instead of returning None."""
     match = re.search(pattern, text, flags)
     if match is None:
-        raise ValueError(f'Pattern not found: {pattern}')
+        raise ValueError(f"Pattern not found: {pattern}")
     return match
 
 
-def parse_blocks(
-        text: str
-    ) -> dict[str, str]:
+def parse_blocks(text: str) -> dict[str, str]:
     """Split a HSD-style file into top-level ``Elem { ... }`` blocks.
 
     HSD allows the '=' before a block's '{' to be omitted (both
@@ -69,7 +68,7 @@ def parse_blocks(
     i = 0
     n = len(text)
     while i < n:
-        m = re.search(r'(?m)^\s*([A-Z][a-z]?)\s*(?:=\s*)?\{', text[i:])
+        m = re.search(r"(?m)^\s*([A-Z][a-z]?)\s*(?:=\s*)?\{", text[i:])
         if not m:
             break
         start = i + m.start()
@@ -78,40 +77,35 @@ def parse_blocks(
         depth = 0
         j = brace0
         while j < n:
-            if text[j] == '{':
+            if text[j] == "{":
                 depth += 1
-            elif text[j] == '}':
+            elif text[j] == "}":
                 depth -= 1
                 if depth == 0:
-                    block = text[start:j+1]
+                    block = text[start : j + 1]
                     entries[elem] = block
                     i = j + 1
                     break
             j += 1
         else:
-            raise ValueError(f'Unclosed block for {elem}')
+            raise ValueError(f"Unclosed block for {elem}")
     return entries
 
 
-def extract_braced_block(
-        text: str,
-        open_brace_index: int
-    ) -> str:
+def extract_braced_block(text: str, open_brace_index: int) -> str:
     """Return the balanced ``{ ... }`` substring starting at a '{' index."""
     depth = 0
     for j in range(open_brace_index, len(text)):
-        if text[j] == '{':
+        if text[j] == "{":
             depth += 1
-        elif text[j] == '}':
+        elif text[j] == "}":
             depth -= 1
             if depth == 0:
-                return text[open_brace_index:j + 1]
-    raise ValueError('Unclosed brace block')
+                return text[open_brace_index : j + 1]
+    raise ValueError("Unclosed brace block")
 
 
-def parse_wfc(
-        path: str | Path
-    ) -> dict[str, dict[str, Any]]:
+def parse_wfc(path: str | Path) -> dict[str, dict[str, Any]]:
     """Parse a wfc.hsd file into per-element STO orbital data.
 
     Returns a dict keyed by element symbol, each value
@@ -124,89 +118,95 @@ def parse_wfc(
     blocks = parse_blocks(text)
     data: dict[str, dict[str, Any]] = {}
     for elem, block in blocks.items():
-        z = int(require_search(r'AtomicNumber\s*=\s*(\d+)', block).group(1))
+        z = int(require_search(r"AtomicNumber\s*=\s*(\d+)", block).group(1))
         orbitals = []
-        for om in re.finditer(r'(?m)^\s*Orbital\s*(?:=\s*)?\{', block):
+        for om in re.finditer(r"(?m)^\s*Orbital\s*(?:=\s*)?\{", block):
             ob = extract_braced_block(block, om.end() - 1)
-            shell_l = int(require_search(r'AngularMomentum\s*=\s*(\d+)', ob).group(1))
-            occ = float(require_search(r'Occupation\s*=\s*([0-9Ee+\-.]+)', ob).group(1))
-            cutoff = float(require_search(r'Cutoff\s*=\s*([0-9Ee+\-.]+)', ob).group(1))
-            exptxt = require_search(r'Exponents\s*(?:=\s*)?\{(.*?)\}', ob, re.S).group(1)
-            coeftxt = require_search(r'Coefficients\s*(?:=\s*)?\{(.*?)\}', ob, re.S).group(1)
+            shell_l = int(require_search(r"AngularMomentum\s*=\s*(\d+)", ob).group(1))
+            occ = float(require_search(r"Occupation\s*=\s*([0-9Ee+\-.]+)", ob).group(1))
+            cutoff = float(require_search(r"Cutoff\s*=\s*([0-9Ee+\-.]+)", ob).group(1))
+            exptxt = require_search(r"Exponents\s*(?:=\s*)?\{(.*?)\}", ob, re.S).group(
+                1
+            )
+            coeftxt = require_search(
+                r"Coefficients\s*(?:=\s*)?\{(.*?)\}", ob, re.S
+            ).group(1)
             exponents = np.array([float(x) for x in exptxt.split()], dtype=float)
             coeffs = np.array([float(x) for x in coeftxt.split()], dtype=float)
             if coeffs.size % exponents.size != 0:
-                raise ValueError(f'{elem} l={shell_l}: coefficient count incompatible with exponent count')
+                raise ValueError(
+                    f"{elem} l={shell_l}: coefficient count incompatible with exponent count"
+                )
             # Coefficients are stored exponent-major with polynomial terms per exponent.
             # Use shape (n_exponents, n_poly_terms) so each row corresponds to one exponent.
             coeffs = coeffs.reshape((exponents.size, -1))
-            orbitals.append({
-                'l': shell_l,
-                'occupation': occ,
-                'cutoff': cutoff,
-                'sto_exponents': exponents,
-                'sto_coeff_matrix': coeffs,
-            })
-        data[elem] = {'atomic_number': z, 'orbitals': orbitals}
+            orbitals.append(
+                {
+                    "l": shell_l,
+                    "occupation": occ,
+                    "cutoff": cutoff,
+                    "sto_exponents": exponents,
+                    "sto_coeff_matrix": coeffs,
+                }
+            )
+        data[elem] = {"atomic_number": z, "orbitals": orbitals}
     return data
 
 
-def parse_skdef_valence(
-        path: str | Path
-    ) -> dict[str, list[str]]:
+def parse_skdef_valence(path: str | Path) -> dict[str, list[str]]:
     """Read the ``ValenceShells`` list per element from a skdef.hsd file.
 
     Returns a dict mapping element symbol to a list of shell labels like
     ``['2s', '2p']``. Elements with no AtomParameters block yield {}.
     """
     text = Path(path).read_text()
-    m = re.search(r'(?m)^\s*AtomParameters\s*\{', text)
+    m = re.search(r"(?m)^\s*AtomParameters\s*\{", text)
     if not m:
         return {}
     body = extract_braced_block(text, m.end() - 1)
     out: dict[str, list[str]] = {}
-    for om in re.finditer(r'(?m)^\s*([A-Z][a-z]?)\s*\{', body):
+    for om in re.finditer(r"(?m)^\s*([A-Z][a-z]?)\s*\{", body):
         elem = om.group(1)
         block = extract_braced_block(body, om.end() - 1)
-        m_shells = re.search(r'ValenceShells\s*=\s*([^\n]+)', block)
+        m_shells = re.search(r"ValenceShells\s*=\s*([^\n]+)", block)
         shells = m_shells.group(1).split() if m_shells else []
         out[elem] = shells
     return out
 
 
-def parse_compression_spec(
-        spec_text: str
-    ) -> dict[str, Any]:
+def parse_compression_spec(spec_text: str) -> dict[str, Any]:
     """Parse a compression spec like ``PowerCompression { Power = 2; Radius = 7.0 }``.
 
     Returns ``{'type': str, 'parameters': dict[str, float | int]}``.
     """
     header = spec_text.strip()
-    match = re.match(r'^([A-Za-z0-9_-]+)\s*(?:\{(.*)\})?$', header, re.S)
+    match = re.match(r"^([A-Za-z0-9_-]+)\s*(?:\{(.*)\})?$", header, re.S)
     if not match:
-        return {'type': header, 'parameters': {}}
+        return {"type": header, "parameters": {}}
 
     compression_type = match.group(1)
-    param_text = (match.group(2) or '').strip()
+    param_text = (match.group(2) or "").strip()
     parameters: dict[str, Any] = {}
-    for token in re.split(r'[;\n]+', param_text):
+    for token in re.split(r"[;\n]+", param_text):
         token = token.strip()
         if not token:
             continue
-        kv = re.match(r'([A-Za-z0-9_-]+)\s*=\s*([0-9Ee+\-.]+)', token)
+        kv = re.match(r"([A-Za-z0-9_-]+)\s*=\s*([0-9Ee+\-.]+)", token)
         if kv:
             value_text = kv.group(2)
-            value = float(value_text) if any(ch in value_text for ch in '.eE') else int(value_text)
+            value = (
+                float(value_text)
+                if any(ch in value_text for ch in ".eE")
+                else int(value_text)
+            )
             parameters[kv.group(1)] = value
         else:
-            parameters.setdefault('raw', []).append(token)
+            parameters.setdefault("raw", []).append(token)
 
-    return {'type': compression_type, 'parameters': parameters}
+    return {"type": compression_type, "parameters": parameters}
 
 
-def parse_skdef_compressions(
-        path: str | Path
-    ) -> dict[str, dict[str, Any]]:
+def parse_skdef_compressions(path: str | Path) -> dict[str, dict[str, Any]]:
     """Read DensityCompression / WaveCompressions per element from skdef.hsd.
 
     Returns a dict mapping element symbol to
@@ -214,34 +214,44 @@ def parse_skdef_compressions(
     where each spec is the dict returned by parse_compression_spec.
     """
     text = Path(path).read_text()
-    m = re.search(r'(?m)^\s*AtomParameters\s*\{', text)
+    m = re.search(r"(?m)^\s*AtomParameters\s*\{", text)
     if not m:
         return {}
 
     body = extract_braced_block(text, m.end() - 1)
     out: dict[str, dict[str, Any]] = {}
-    for om in re.finditer(r'(?m)^\s*([A-Z][a-z]?)\s*\{', body):
+    for om in re.finditer(r"(?m)^\s*([A-Z][a-z]?)\s*\{", body):
         elem = om.group(1)
         block = extract_braced_block(body, om.end() - 1)
-        dftb_match = re.search(r'(?m)^\s*DftbAtom\s*\{', block)
+        dftb_match = re.search(r"(?m)^\s*DftbAtom\s*\{", block)
         if not dftb_match:
             continue
 
         dftb_block = extract_braced_block(block, dftb_match.end() - 1)
-        density_match = re.search(r'DensityCompression\s*=\s*([^\n\{]+(?:\{.*?\})?)', dftb_block, re.S)
-        wave_match = re.search(r'(?m)^\s*WaveCompressions\s*=\s*SingleAtomCompressions\s*\{', dftb_block)
+        density_match = re.search(
+            r"DensityCompression\s*=\s*([^\n\{]+(?:\{.*?\})?)", dftb_block, re.S
+        )
+        wave_match = re.search(
+            r"(?m)^\s*WaveCompressions\s*=\s*SingleAtomCompressions\s*\{", dftb_block
+        )
 
         compression: dict[str, Any] = {}
         if density_match:
-            compression['density_compression'] = parse_compression_spec(density_match.group(1))
+            compression["density_compression"] = parse_compression_spec(
+                density_match.group(1)
+            )
 
         if wave_match:
             wave_block = extract_braced_block(dftb_block, wave_match.end() - 1)
             wave_compressions = {}
-            for sm in re.finditer(r'(?m)^\s*([A-Za-z0-9_-]+)\s*=\s*([^\n\{]+(?:\{.*?\})?)', wave_block, re.S):
+            for sm in re.finditer(
+                r"(?m)^\s*([A-Za-z0-9_-]+)\s*=\s*([^\n\{]+(?:\{.*?\})?)",
+                wave_block,
+                re.S,
+            ):
                 shell_label = sm.group(1)
                 wave_compressions[shell_label] = parse_compression_spec(sm.group(2))
-            compression['wave_compressions'] = wave_compressions
+            compression["wave_compressions"] = wave_compressions
 
         if compression:
             out[elem] = compression
@@ -250,24 +260,21 @@ def parse_skdef_compressions(
 
 
 def compression_radius(
-        compression_spec: dict[str, Any] | None,
-        default: float | None = None
-    ) -> float | None:
+    compression_spec: dict[str, Any] | None, default: float | None = None
+) -> float | None:
     """Extract the ``Radius`` parameter from a parse_compression_spec dict."""
     if not compression_spec:
         return default
-    params = compression_spec.get('parameters', {})
-    radius = params.get('Radius')
+    params = compression_spec.get("parameters", {})
+    radius = params.get("Radius")
     if radius is None:
         return default
     return float(radius)
 
 
 def shell_fit_rmax(
-        elem_compression: dict[str, Any] | None,
-        shell_label: str,
-        default_rmax: float
-    ) -> float:
+    elem_compression: dict[str, Any] | None, shell_label: str, default_rmax: float
+) -> float:
     """Pick a fit cutoff radius for one shell from its skdef compression info.
 
     Prefers the shell's own WaveCompression radius, falls back to the
@@ -276,26 +283,20 @@ def shell_fit_rmax(
     if not elem_compression:
         return default_rmax
 
-    wave = elem_compression.get('wave_compressions', {})
+    wave = elem_compression.get("wave_compressions", {})
     if shell_label in wave:
-        return compression_radius(wave[shell_label], default_rmax) # type: ignore
+        return compression_radius(wave[shell_label], default_rmax)  # type: ignore
 
-    density = elem_compression.get('density_compression')
-    return compression_radius(density, default_rmax) # type: ignore
+    density = elem_compression.get("density_compression")
+    return compression_radius(density, default_rmax)  # type: ignore
 
 
-def sto_primitive_radial(
-        r: np.ndarray,
-        zeta: float, 
-        power: int
-    ) -> np.ndarray:
+def sto_primitive_radial(r: np.ndarray, zeta: float, power: int) -> np.ndarray:
     """Evaluate one unnormalized Slater-type primitive r^power * exp(-zeta r)."""
     return (r**power) * np.exp(-zeta * r)
 
 
-def target_radial_from_wfc(
-        orb: dict[str, Any]
-    ) -> Callable[[np.ndarray], np.ndarray]:
+def target_radial_from_wfc(orb: dict[str, Any]) -> Callable[[np.ndarray], np.ndarray]:
     """Build R(r) for one wfc.hsd orbital as an exact analytic function.
 
     R(r) = sum_zeta sum_k c[zeta,k] * r^(l+k) * exp(-zeta r), using every
@@ -307,9 +308,9 @@ def target_radial_from_wfc(
 
     Returns a callable r -> R(r) (r may be a scalar-shaped ndarray).
     """
-    shell_l = orb['l']
-    zetas = orb['sto_exponents']
-    coeff_matrix = orb['sto_coeff_matrix']
+    shell_l = orb["l"]
+    zetas = orb["sto_exponents"]
+    coeff_matrix = orb["sto_coeff_matrix"]
 
     def f(r: np.ndarray) -> np.ndarray:
         vals = np.zeros_like(r)
@@ -317,12 +318,11 @@ def target_radial_from_wfc(
             for k, c in enumerate(coeffs_for_zeta):
                 vals += c * sto_primitive_radial(r, zeta, shell_l + k)
         return vals
+
     return f
 
 
-def parse_atom_wave_file(
-        path: str | Path
-    ) -> dict[str, Any]:
+def parse_atom_wave_file(path: str | Path) -> dict[str, Any]:
     """Parse a skprogs slateratom ``wave_*.dat`` numerical wavefunction file.
 
     Returns a dict with 'path', 'principal_qn', 'l', 'occupation', 'r',
@@ -336,7 +336,10 @@ def parse_atom_wave_file(
     data_start = None
 
     for idx, line in enumerate(lines):
-        m = re.search(r'Principal QN=\s*(\d+)\s*,\s*l=\s*(\d+)\s*,\s*Occupation=\s*([0-9Ee+\-.]+)', line)
+        m = re.search(
+            r"Principal QN=\s*(\d+)\s*,\s*l=\s*(\d+)\s*,\s*Occupation=\s*([0-9Ee+\-.]+)",
+            line,
+        )
         if m:
             principal_qn = int(m.group(1))
             shell_l = int(m.group(2))
@@ -345,7 +348,7 @@ def parse_atom_wave_file(
             break
 
     if data_start is None:
-        raise ValueError(f'Could not locate wavefunction header in {path}')
+        raise ValueError(f"Could not locate wavefunction header in {path}")
 
     r = []
     wave = []
@@ -353,7 +356,7 @@ def parse_atom_wave_file(
     wave_2nd = []
     for line in lines[data_start:]:
         stripped = line.strip()
-        if not stripped or stripped.startswith('#'):
+        if not stripped or stripped.startswith("#"):
             continue
         parts = stripped.split()
         if len(parts) < 3:
@@ -366,26 +369,23 @@ def parse_atom_wave_file(
             wave_2nd.append(float(parts[4]))
 
     out: dict[str, Any] = {
-        'path': str(path),
-        'principal_qn': principal_qn,
-        'l': shell_l,
-        'occupation': occupation,
-        'r': np.array(r, dtype=float),
-        'wave': np.array(wave, dtype=float),
+        "path": str(path),
+        "principal_qn": principal_qn,
+        "l": shell_l,
+        "occupation": occupation,
+        "r": np.array(r, dtype=float),
+        "wave": np.array(wave, dtype=float),
     }
 
     if wave_1st:
-        out['wave_1st'] = np.array(wave_1st, dtype=float)
+        out["wave_1st"] = np.array(wave_1st, dtype=float)
     if wave_2nd:
-        out['wave_2nd'] = np.array(wave_2nd, dtype=float)
+        out["wave_2nd"] = np.array(wave_2nd, dtype=float)
 
     return out
 
 
-def find_atom_wave_directory(
-        atom_root: str | Path | None,
-        elem: str
-    ) -> Path | None:
+def find_atom_wave_directory(atom_root: str | Path | None, elem: str) -> Path | None:
     """Locate the first skprogs ``atom.*/atom0`` output directory for elem."""
     if not atom_root:
         return None
@@ -394,15 +394,13 @@ def find_atom_wave_directory(
     if not elem_dir.exists():
         return None
 
-    candidates = sorted(elem_dir.glob('atom.*/atom0'))
+    candidates = sorted(elem_dir.glob("atom.*/atom0"))
     return candidates[0] if candidates else None
 
 
 def load_atom_wave_target(
-        atom_root: str | Path | None,
-        elem: str, 
-        shell_label: str
-    ) -> dict[str, Any] | None:
+    atom_root: str | Path | None, elem: str, shell_label: str
+) -> dict[str, Any] | None:
     """Load the numerical wavefunction for one element/shell from _build output.
 
     Prefers a spin-down, then spin-up, then any matching wave_*.dat file
@@ -416,27 +414,30 @@ def load_atom_wave_target(
 
     shell_key = shell_label.lower()
     preferred = []
-    preferred.extend(sorted(atom_dir.glob(f'wave_*{shell_key}_dn.dat')))
-    preferred.extend(sorted(atom_dir.glob(f'wave_*{shell_key}_up.dat')))
-    preferred.extend(sorted(atom_dir.glob(f'wave_*{shell_key}*.dat')))
+    preferred.extend(sorted(atom_dir.glob(f"wave_*{shell_key}_dn.dat")))
+    preferred.extend(sorted(atom_dir.glob(f"wave_*{shell_key}_up.dat")))
+    preferred.extend(sorted(atom_dir.glob(f"wave_*{shell_key}*.dat")))
     if not preferred:
         return None
 
     parsed = [parse_atom_wave_file(path) for path in preferred]
-    parsed = [item for item in parsed if item['l'] == CHAR2L[shell_label]]
+    parsed = [item for item in parsed if item["l"] == CHAR2L[shell_label]]
     if not parsed:
         return None
 
-    parsed.sort(key=lambda item: (item['principal_qn'] is None, item['principal_qn'] or -1, item['path']))
+    parsed.sort(
+        key=lambda item: (
+            item["principal_qn"] is None,
+            item["principal_qn"] or -1,
+            item["path"],
+        )
+    )
     return parsed[-1]
 
 
 def gto_contract_radial(
-        r: np.ndarray,
-        alphas: np.ndarray, 
-        coeffs: np.ndarray, 
-        shell_l: int
-    ) -> np.ndarray:
+    r: np.ndarray, alphas: np.ndarray, coeffs: np.ndarray, shell_l: int
+) -> np.ndarray:
     """Evaluate a contracted GTO shell R(r) = sum_i c_i * r^l * exp(-a_i r^2).
 
     Primitives are unnormalized r^l * exp(-a r^2): this matches the PySOC
@@ -446,22 +447,16 @@ def gto_contract_radial(
     """
     vals = np.zeros_like(r)
     for a, c in zip(alphas, coeffs):
-        vals += c * (r**shell_l) * np.exp(-a * r*r)
+        vals += c * (r**shell_l) * np.exp(-a * r * r)
     return vals
 
 
-def make_grid(
-        rmax: float = DEFAULT_RMAX, 
-        ngrid: int = DEFAULT_NGRID
-    ) -> np.ndarray:
+def make_grid(rmax: float = DEFAULT_RMAX, ngrid: int = DEFAULT_NGRID) -> np.ndarray:
     """Build a linearly-spaced radial grid on (0, rmax] with ngrid points."""
     return np.linspace(1e-6, rmax, ngrid)
 
 
-def weights(
-        r: np.ndarray,
-        scheme: str = DEFAULT_WEIGHT
-    ) -> np.ndarray:
+def weights(r: np.ndarray, scheme: str = DEFAULT_WEIGHT) -> np.ndarray:
     """Fit-residual weight profile over r for one of 'r2', 'r0', 'soc'.
 
     'r2' matches the physical 3D radial normalization weight r^2 (the
@@ -470,41 +465,31 @@ def weights(
     Breit-Pauli spin-orbit operator (see fit_shell_varpro's docstring for
     why this is not the default).
     """
-    if scheme == 'r2':
-        return r*r
-    if scheme == 'r0':
+    if scheme == "r2":
+        return r * r
+    if scheme == "r0":
         return np.ones_like(r)
-    if scheme == 'soc':
+    if scheme == "soc":
         return np.where(r > 1e-4, 1.0 / np.maximum(r, 1e-4), 1e4)
-    raise ValueError(f'Unknown weight scheme {scheme}')
+    raise ValueError(f"Unknown weight scheme {scheme}")
 
 
-def compression_taper(
-        r: np.ndarray, 
-        rmax: float | None
-    ) -> np.ndarray:
+def compression_taper(r: np.ndarray, rmax: float | None) -> np.ndarray:
     """Smooth exp(-(r/rmax)^4) taper used to soft-cutoff the fit weight at rmax."""
     if rmax is None or rmax <= 0:
         return np.ones_like(r)
     scaled = r / float(rmax)
-    return np.exp(-(scaled ** 4))
+    return np.exp(-(scaled**4))
 
 
-def primitive_matrix(
-        r: np.ndarray,
-        alphas: np.ndarray, 
-        shell_l: int
-    ) -> np.ndarray:
+def primitive_matrix(r: np.ndarray, alphas: np.ndarray, shell_l: int) -> np.ndarray:
     """Design matrix of unnormalized primitives: column i is r^l * exp(-a_i r^2)."""
     return np.vstack([(r**shell_l) * np.exp(-a * r * r) for a in alphas]).T
 
 
 def solve_linear_coeffs(
-        A: np.ndarray, 
-        w: np.ndarray, 
-        target: np.ndarray, 
-        ridge: float = 1e-12
-    ) -> np.ndarray:
+    A: np.ndarray, w: np.ndarray, target: np.ndarray, ridge: float = 1e-12
+) -> np.ndarray:
     """Weighted least-squares contraction coefficients for fixed exponents.
 
     Solves min_c ||w*(A c - target)||^2 with a light relative ridge
@@ -518,12 +503,93 @@ def solve_linear_coeffs(
     """
     wA = w[:, None] * A
     wt = w * target
-    scale = np.mean(np.sum(wA ** 2, axis=0))
+    scale = np.mean(np.sum(wA**2, axis=0))
     lam = ridge * scale
     wA = np.vstack([wA, np.sqrt(lam) * np.eye(A.shape[1])])
     wt = np.concatenate([wt, np.zeros(A.shape[1])])
     coeffs, *_ = np.linalg.lstsq(wA, wt, rcond=None)
     return coeffs
+
+
+def _varpro_resid(
+    log_alpha: np.ndarray,
+    r: np.ndarray,
+    target: np.ndarray,
+    shell_l: int,
+    w: np.ndarray,
+) -> np.ndarray:
+    """VARPRO residual: primitives at exp(log_alpha), coefficients solved linearly."""
+    A = primitive_matrix(r, np.exp(log_alpha), shell_l)
+    coeffs = solve_linear_coeffs(A, w, target)
+    return w * (A @ coeffs - target)
+
+
+def _init_varpro_worker(
+    r: np.ndarray,
+    target: np.ndarray,
+    shell_l: int,
+    w: np.ndarray,
+    lsq_tol: float,
+) -> None:
+    """ProcessPoolExecutor initializer: stash per-shell fit data as globals.
+
+    Avoids re-pickling `r`/`target`/`w` (an ngrid-sized array each) for
+    every one of the `nstarts` restarts - they're set up once per worker
+    process instead.
+    """
+    global _worker_r, _worker_target, _worker_shell_l, _worker_w, _worker_lsq_tol
+    _worker_r = r
+    _worker_target = target
+    _worker_shell_l = shell_l
+    _worker_w = w
+    _worker_lsq_tol = lsq_tol
+    # Unbounded log-alpha steps can transiently overflow exp() during line
+    # search before being rejected; harmless, so silence the warning.
+    np.seterr(over="ignore")
+
+
+def _run_varpro_attempt(
+    attempt: int,
+    alpha0: np.ndarray,
+) -> dict[str, Any]:
+    """Run one randomized-start VARPRO fit; reads fit data from worker globals."""
+    r = _worker_r
+    target = _worker_target
+    shell_l = _worker_shell_l
+    w = _worker_w
+    lsq_tol = _worker_lsq_tol
+
+    res = least_squares(
+        _varpro_resid,
+        np.log(alpha0),
+        args=(r, target, shell_l, w),
+        max_nfev=3000,
+        xtol=lsq_tol,
+        ftol=lsq_tol,
+        gtol=lsq_tol,
+    )
+    alphas = np.exp(res.x)
+    A = primitive_matrix(r, alphas, shell_l)
+    coeffs = solve_linear_coeffs(A, w, target)
+    fit = A @ coeffs
+    weight_vector = w * w
+    rel_rms = float(
+        np.sqrt(
+            np.sum(weight_vector * (fit - target) ** 2)
+            / np.sum(weight_vector * target**2)
+        )
+    )
+    return {
+        "alphas": alphas,
+        "coeffs": coeffs,
+        "fit": fit,
+        "rel_rms": rel_rms,
+        "success": bool(res.success),
+        "message": res.message,
+        "cost": float(res.cost),
+        "nfev": int(res.nfev),
+        "attempts": attempt + 1,
+    }
 
 
 def fit_shell_varpro(
@@ -533,11 +599,13 @@ def fit_shell_varpro(
     nprim: int,
     amin: float = 0.05,
     amax: float = 3000.0,
-    weight_scheme: str = 'r2',
+    weight_scheme: str = "r2",
     nstarts: int = DEFAULT_NSTARTS,
     seed: int = DEFAULT_SEED,
     fit_rmax: float | None = None,
     use_compression_weight: bool = False,
+    lsq_tol: float = DEFAULT_LSQ_TOL,
+    nworkers: int | None = None,
 ) -> dict[str, Any]:
     """Fit a contracted GTO shell to a target radial function.
 
@@ -551,7 +619,10 @@ def fit_shell_varpro(
 
     Tries `nstarts` randomized initial exponent guesses (log-normal
     perturbations of a geomspace(amin, amax, nprim) baseline) and keeps
-    the best (lowest weighted relative RMS) result.
+    the best (lowest weighted relative RMS) result. The `nstarts`
+    restarts are independent of each other, so they run in parallel
+    across `nworkers` processes (default: all available cores) via
+    ProcessPoolExecutor.
 
     Returns a dict with keys 'alphas', 'coeffs' (ndarrays, best fit),
     'fit' (ndarray, the fitted curve on `r`), 'rel_rms' (float),
@@ -561,58 +632,32 @@ def fit_shell_varpro(
     w = np.sqrt(weights(r, weight_scheme))
     if use_compression_weight:
         w = w * np.sqrt(compression_taper(r, fit_rmax))
-    weight_vector = w * w
 
     base = np.geomspace(amin, amax, nprim)
     rng = np.random.default_rng(seed)
 
-    # Unbounded log-alpha steps can transiently overflow exp() during line
-    # search before being rejected; harmless, so silence the warning.
-    np.seterr(over='ignore')
+    n_attempts = max(1, int(nstarts))
+    alpha0s = [base]
+    for _ in range(n_attempts - 1):
+        spread = rng.normal(scale=1.2, size=nprim)
+        alpha0s.append(np.clip(np.exp(np.log(base) + spread), amin * 1e-3, amax * 1e3))
 
-    def resid(log_alpha: np.ndarray) -> np.ndarray:
-        A = primitive_matrix(r, np.exp(log_alpha), shell_l)
-        coeffs = solve_linear_coeffs(A, w, target)
-        return w * (A @ coeffs - target)
+    workers = nworkers if nworkers is not None else (os.cpu_count() or 1)
+    workers = max(1, min(workers, n_attempts))
 
-    best: dict[str, Any] | None = None
-    for attempt in range(max(1, int(nstarts))):
-        if attempt == 0:
-            alpha0 = base
-        else:
-            spread = rng.normal(scale=1.2, size=nprim)
-            alpha0 = np.clip(np.exp(np.log(base) + spread), amin * 1e-3, amax * 1e3)
+    with ProcessPoolExecutor(
+        max_workers=workers,
+        initializer=_init_varpro_worker,
+        initargs=(r, target, shell_l, w, lsq_tol),
+    ) as pool:
+        results = list(pool.map(_run_varpro_attempt, range(n_attempts), alpha0s))
 
-        res = least_squares(resid, np.log(alpha0), max_nfev=3000, xtol=1e-14, ftol=1e-14, gtol=1e-14)
-        alphas = np.exp(res.x)
-        A = primitive_matrix(r, alphas, shell_l)
-        coeffs = solve_linear_coeffs(A, w, target)
-        fit = A @ coeffs
-        rel_rms = float(np.sqrt(
-            np.sum(weight_vector * (fit - target) ** 2) / np.sum(weight_vector * target ** 2)
-        ))
-
-        if best is None or rel_rms < best['rel_rms']:
-            best = {
-                'alphas': alphas,
-                'coeffs': coeffs,
-                'fit': fit,
-                'rel_rms': rel_rms,
-                'success': bool(res.success),
-                'message': res.message,
-                'cost': float(res.cost),
-                'nfev': int(res.nfev),
-                'attempts': attempt + 1,
-            }
-
-    assert best is not None  # loop runs at least once (max(1, nstarts))
-    return best
+    return min(results, key=lambda item: item["rel_rms"])
 
 
 def choose_valence_orbital(
-        orbitals_by_l: dict[int, list[dict[str, Any]]],
-        preferred: str = 'last'
-    ) -> dict[int, dict[str, Any]]:
+    orbitals_by_l: dict[int, list[dict[str, Any]]], preferred: str = "last"
+) -> dict[int, dict[str, Any]]:
     """Pick one orbital per angular momentum when wfc.hsd lists several.
 
     `preferred` is 'last', 'first', or a string integer index into each
@@ -620,9 +665,9 @@ def choose_valence_orbital(
     """
     chosen = {}
     for shell_l, arr in orbitals_by_l.items():
-        if preferred == 'last':
+        if preferred == "last":
             chosen[shell_l] = arr[-1]
-        elif preferred == 'first':
+        elif preferred == "first":
             chosen[shell_l] = arr[0]
         else:
             idx = int(preferred)
@@ -630,36 +675,31 @@ def choose_valence_orbital(
     return chosen
 
 
-def format_basis(
-        elem: str, 
-        shells: dict[int, dict[str, Any]]
-    ) -> str:
+def format_basis(elem: str, shells: dict[int, dict[str, Any]]) -> str:
     """Render fitted shells (as returned by fit_shell_varpro) as .basis text."""
-    lines = [f'{elem} 0']
+    lines = [f"{elem} 0"]
     for shell_l in sorted(shells):
         label = L2CHAR[shell_l]
-        alphas = shells[shell_l]['alphas']
-        coeffs = shells[shell_l]['coeffs']
+        alphas = shells[shell_l]["alphas"]
+        coeffs = shells[shell_l]["coeffs"]
         order = np.argsort(alphas)
-        lines.append(f'{label} {len(alphas)} 1.0')
+        lines.append(f"{label} {len(alphas)} 1.0")
         for a, c in zip(alphas[order], coeffs[order]):
-            lines.append(f'{a: .10E} {c: .10E}')
-    return '\n'.join(lines) + '\n'
+            lines.append(f"{a: .10E} {c: .10E}")
+    return "\n".join(lines) + "\n"
 
 
 def extract_orbitals_by_l(
-        elem_entry: dict[str, Any]
-    ) -> dict[int, list[dict[str, Any]]]:
+    elem_entry: dict[str, Any],
+) -> dict[int, list[dict[str, Any]]]:
     """Group a parse_wfc element entry's orbitals by angular momentum."""
     out: dict[int, list[dict[str, Any]]] = {}
-    for orb in elem_entry['orbitals']:
-        out.setdefault(orb['l'], []).append(orb)
+    for orb in elem_entry["orbitals"]:
+        out.setdefault(orb["l"], []).append(orb)
     return out
 
 
-def parse_basis_file(
-        path: str | Path
-    ) -> tuple[str, dict[int, dict[str, Any]]]:
+def parse_basis_file(path: str | Path) -> tuple[str, dict[int, dict[str, Any]]]:
     """Parse a PySOC-style .basis file.
 
     Returns (element_symbol, shells) where shells maps angular momentum
@@ -667,7 +707,7 @@ def parse_basis_file(
     """
     lines = Path(path).read_text().splitlines()
     if not lines:
-        raise ValueError(f'Empty basis file: {path}')
+        raise ValueError(f"Empty basis file: {path}")
 
     element = lines[0].split()[0]
     shells: dict[int, dict[str, Any]] = {}
@@ -679,7 +719,7 @@ def parse_basis_file(
             continue
         shell_label = parts[0].upper()
         if shell_label not in CHAR2L:
-            raise ValueError(f'Unexpected shell label {shell_label} in {path}')
+            raise ValueError(f"Unexpected shell label {shell_label} in {path}")
         nprim = int(parts[1])
         i += 1
         exponents = []
@@ -691,17 +731,14 @@ def parse_basis_file(
             i += 1
         shell_l = CHAR2L[shell_label]
         shells[shell_l] = {
-            'label': shell_label,
-            'exponents': np.array(exponents, dtype=float),
-            'coeffs': np.array(coeffs, dtype=float),
+            "label": shell_label,
+            "exponents": np.array(exponents, dtype=float),
+            "coeffs": np.array(coeffs, dtype=float),
         }
     return element, shells
 
 
-def reference_nprim_for_element(
-        reference_dir: str | Path, 
-        elem: str
-    ) -> dict[int, int]:
+def reference_nprim_for_element(reference_dir: str | Path, elem: str) -> dict[int, int]:
     """Read the exact per-shell primitive count for elem from a reference .basis dir.
 
     The mio-1-1-fit primitive counts are not uniform across elements
@@ -710,17 +747,16 @@ def reference_nprim_for_element(
     .basis file instead of assuming a fixed count, when one is available.
     Returns {} if reference_dir has no <elem>.basis file.
     """
-    path = Path(reference_dir) / f'{elem}.basis'
+    path = Path(reference_dir) / f"{elem}.basis"
     if not path.exists():
         return {}
     _, shells = parse_basis_file(path)
-    return {shell_l: sh['exponents'].size for shell_l, sh in shells.items()}
+    return {shell_l: sh["exponents"].size for shell_l, sh in shells.items()}
 
 
 def compare_basis_files(
-        reference_path: str | Path, 
-        derived_path: str | Path
-    ) -> dict[str, Any]:
+    reference_path: str | Path, derived_path: str | Path
+) -> dict[str, Any]:
     """Diff raw exponents/coefficients between two .basis files, shell by shell.
 
     Primitives are matched by sorting each shell's exponents ascending.
@@ -731,48 +767,53 @@ def compare_basis_files(
     ref_element, ref_shells = parse_basis_file(reference_path)
     derived_element, derived_shells = parse_basis_file(derived_path)
     if ref_element != derived_element:
-        raise ValueError(f'Element mismatch: {ref_element} vs {derived_element}')
+        raise ValueError(f"Element mismatch: {ref_element} vs {derived_element}")
 
     shell_report: dict[str, Any] = {}
     all_shells = sorted(set(ref_shells) | set(derived_shells))
     for shell_l in all_shells:
         if shell_l not in ref_shells:
-            shell_report[L2CHAR[shell_l]] = {'status': 'missing_in_reference'}
+            shell_report[L2CHAR[shell_l]] = {"status": "missing_in_reference"}
             continue
         if shell_l not in derived_shells:
-            shell_report[L2CHAR[shell_l]] = {'status': 'missing_in_derived'}
+            shell_report[L2CHAR[shell_l]] = {"status": "missing_in_derived"}
             continue
 
         ref = ref_shells[shell_l]
         derived = derived_shells[shell_l]
-        ref_order = np.argsort(ref['exponents'])
-        derived_order = np.argsort(derived['exponents'])
-        ref_exp = ref['exponents'][ref_order]
-        derived_exp = derived['exponents'][derived_order]
-        ref_coeff = ref['coeffs'][ref_order]
-        derived_coeff = derived['coeffs'][derived_order]
+        ref_order = np.argsort(ref["exponents"])
+        derived_order = np.argsort(derived["exponents"])
+        ref_exp = ref["exponents"][ref_order]
+        derived_exp = derived["exponents"][derived_order]
+        ref_coeff = ref["coeffs"][ref_order]
+        derived_coeff = derived["coeffs"][derived_order]
 
         n = min(ref_exp.size, derived_exp.size)
         exp_diff = derived_exp[:n] - ref_exp[:n]
         coeff_diff = derived_coeff[:n] - ref_coeff[:n]
         shell_report[L2CHAR[shell_l]] = {
-            'status': 'compared',
-            'reference_nprim': int(ref_exp.size),
-            'derived_nprim': int(derived_exp.size),
-            'matched_primitives': int(n),
-            'exponent_max_abs_diff': float(np.max(np.abs(exp_diff))) if n else None,
-            'exponent_rms_diff': float(np.sqrt(np.mean(exp_diff**2))) if n else None,
-            'coeff_max_abs_diff': float(np.max(np.abs(coeff_diff))) if n else None,
-            'coeff_rms_diff': float(np.sqrt(np.mean(coeff_diff**2))) if n else None,
-            'exponent_allclose': bool(ref_exp.size == derived_exp.size and np.allclose(ref_exp, derived_exp)),
-            'coeff_allclose': bool(ref_coeff.size == derived_coeff.size and np.allclose(ref_coeff, derived_coeff)),
+            "status": "compared",
+            "reference_nprim": int(ref_exp.size),
+            "derived_nprim": int(derived_exp.size),
+            "matched_primitives": int(n),
+            "exponent_max_abs_diff": float(np.max(np.abs(exp_diff))) if n else None,
+            "exponent_rms_diff": float(np.sqrt(np.mean(exp_diff**2))) if n else None,
+            "coeff_max_abs_diff": float(np.max(np.abs(coeff_diff))) if n else None,
+            "coeff_rms_diff": float(np.sqrt(np.mean(coeff_diff**2))) if n else None,
+            "exponent_allclose": bool(
+                ref_exp.size == derived_exp.size and np.allclose(ref_exp, derived_exp)
+            ),
+            "coeff_allclose": bool(
+                ref_coeff.size == derived_coeff.size
+                and np.allclose(ref_coeff, derived_coeff)
+            ),
         }
 
     return {
-        'reference_path': str(reference_path),
-        'derived_path': str(derived_path),
-        'element': ref_element,
-        'shells': shell_report,
+        "reference_path": str(reference_path),
+        "derived_path": str(derived_path),
+        "element": ref_element,
+        "shells": shell_report,
     }
 
 
@@ -793,31 +834,36 @@ def compare_basis_curves(
     ref_element, ref_shells = parse_basis_file(reference_path)
     derived_element, derived_shells = parse_basis_file(derived_path)
     if ref_element != derived_element:
-        raise ValueError(f'Element mismatch: {ref_element} vs {derived_element}')
+        raise ValueError(f"Element mismatch: {ref_element} vs {derived_element}")
 
     r = make_grid(rmax, ngrid)
     shell_report: dict[str, Any] = {}
     for shell_l in sorted(set(ref_shells) | set(derived_shells)):
         if shell_l not in ref_shells or shell_l not in derived_shells:
-            shell_report[L2CHAR[shell_l]] = {'status': 'missing'}
+            shell_report[L2CHAR[shell_l]] = {"status": "missing"}
             continue
         ref = ref_shells[shell_l]
         derived = derived_shells[shell_l]
-        ref_curve = gto_contract_radial(r, ref['exponents'], ref['coeffs'], shell_l)
-        derived_curve = gto_contract_radial(r, derived['exponents'], derived['coeffs'], shell_l)
-        rel_rms = float(np.sqrt(
-            np.sum(r**2 * (derived_curve - ref_curve) ** 2) / np.sum(r**2 * ref_curve ** 2)
-        ))
+        ref_curve = gto_contract_radial(r, ref["exponents"], ref["coeffs"], shell_l)
+        derived_curve = gto_contract_radial(
+            r, derived["exponents"], derived["coeffs"], shell_l
+        )
+        rel_rms = float(
+            np.sqrt(
+                np.sum(r**2 * (derived_curve - ref_curve) ** 2)
+                / np.sum(r**2 * ref_curve**2)
+            )
+        )
         shell_report[L2CHAR[shell_l]] = {
-            'status': 'compared',
-            'relative_rms_curve_diff': rel_rms,
-            'max_abs_curve_diff': float(np.max(np.abs(derived_curve - ref_curve))),
+            "status": "compared",
+            "relative_rms_curve_diff": rel_rms,
+            "max_abs_curve_diff": float(np.max(np.abs(derived_curve - ref_curve))),
         }
     return {
-        'reference_path': str(reference_path),
-        'derived_path': str(derived_path),
-        'element': ref_element,
-        'shells': shell_report,
+        "reference_path": str(reference_path),
+        "derived_path": str(derived_path),
+        "element": ref_element,
+        "shells": shell_report,
     }
 
 
@@ -832,15 +878,23 @@ def comparison_exceeds_thresholds(
     from one side). Either threshold may be omitted to skip that check.
     """
     exceeded = []
-    for shell_label, shell_report in comparison_report.get('shells', {}).items():
-        if shell_report.get('status') != 'compared':
+    for shell_label, shell_report in comparison_report.get("shells", {}).items():
+        if shell_report.get("status") != "compared":
             exceeded.append(shell_label)
             continue
-        exp_diff = shell_report.get('exponent_max_abs_diff')
-        coeff_diff = shell_report.get('coeff_max_abs_diff')
-        if exponent_threshold is not None and exp_diff is not None and exp_diff > exponent_threshold:
+        exp_diff = shell_report.get("exponent_max_abs_diff")
+        coeff_diff = shell_report.get("coeff_max_abs_diff")
+        if (
+            exponent_threshold is not None
+            and exp_diff is not None
+            and exp_diff > exponent_threshold
+        ):
             exceeded.append(shell_label)
-        if coeff_threshold is not None and coeff_diff is not None and coeff_diff > coeff_threshold:
+        if (
+            coeff_threshold is not None
+            and coeff_diff is not None
+            and coeff_diff > coeff_threshold
+        ):
             exceeded.append(shell_label)
     return sorted(set(exceeded))
 
@@ -860,8 +914,14 @@ def select_chosen_shells(
     chosen = choose_valence_orbital(orbitals_by_l, preferred=prefer_orbital)
     valence_shell_labels = valence.get(elem, [])
     if valence_shell_labels:
-        valence_ls = {CHAR2L[label[-1].upper()] for label in valence_shell_labels if label[-1].upper() in CHAR2L}
-        chosen = {shell_l: orb for shell_l, orb in chosen.items() if shell_l in valence_ls}
+        valence_ls = {
+            CHAR2L[label[-1].upper()]
+            for label in valence_shell_labels
+            if label[-1].upper() in CHAR2L
+        }
+        chosen = {
+            shell_l: orb for shell_l, orb in chosen.items() if shell_l in valence_ls
+        }
     return chosen
 
 
@@ -887,8 +947,10 @@ def fit_shell_target(
     if use_atom_wave_target and atom_root:
         atom_target = load_atom_wave_target(atom_root, elem, shell_label)
         if atom_target is None:
-            raise FileNotFoundError(f'No atom wave target found for {elem} shell {shell_label} under {atom_root}')
-        return atom_target['r'], atom_target['wave'], atom_target['path']
+            raise FileNotFoundError(
+                f"No atom wave target found for {elem} shell {shell_label} under {atom_root}"
+            )
+        return atom_target["r"], atom_target["wave"], atom_target["path"]
 
     r_shell = make_grid(fit_rmax, ngrid)
     target = target_radial_from_wfc(orb)(r_shell)
@@ -910,16 +972,18 @@ def fit_element(
     the JSON-serializable per-element report entry.
     """
     chosen = select_chosen_shells(wfc, valence, elem, args.prefer_orbital)
-    nprim_overrides = reference_nprim_for_element(args.nprim_from, elem) if args.nprim_from else {}
+    nprim_overrides = (
+        reference_nprim_for_element(args.nprim_from, elem) if args.nprim_from else {}
+    )
 
     fitted: dict[int, dict[str, Any]] = {}
     meta: dict[str, Any] = {
-        'atomic_number': wfc[elem]['atomic_number'],
-        'valence_shells': valence.get(elem, []),
-        'fit_basis': True,
+        "atomic_number": wfc[elem]["atomic_number"],
+        "valence_shells": valence.get(elem, []),
+        "fit_basis": True,
     }
     if elem in compressions:
-        meta['compression'] = compressions[elem]
+        meta["compression"] = compressions[elem]
 
     for shell_l, orb in chosen.items():
         shell_label = L2CHAR[shell_l]
@@ -928,10 +992,16 @@ def fit_element(
             fit_rmax = shell_fit_rmax(compressions.get(elem), shell_label, args.rmax)
 
         r_shell, target, atom_wave_path = fit_shell_target(
-            orb, shell_l, elem, fit_rmax, args.atom_root, args.use_atom_wave_target, args.ngrid
+            orb,
+            shell_l,
+            elem,
+            fit_rmax,
+            args.atom_root,
+            args.use_atom_wave_target,
+            args.ngrid,
         )
         if atom_wave_path:
-            meta.setdefault('atom_wave_targets', {})[shell_label] = atom_wave_path
+            meta.setdefault("atom_wave_targets", {})[shell_label] = atom_wave_path
 
         nprim = nprim_overrides.get(shell_l, nprim_map[shell_l])
         fitres = fit_shell_varpro(
@@ -944,19 +1014,21 @@ def fit_element(
             seed=args.seed + shell_l,
             fit_rmax=fit_rmax,
             use_compression_weight=args.use_compression_weight,
+            lsq_tol=args.lsq_tol,
+            nworkers=args.nworkers,
         )
         fitted[shell_l] = fitres
         meta[shell_label] = {
-            'occupation': orb['occupation'],
-            'cutoff': orb['cutoff'],
-            'sto_exponents': orb['sto_exponents'].tolist(),
-            'sto_coeff_matrix': orb['sto_coeff_matrix'].tolist(),
-            'relative_rms': fitres['rel_rms'],
-            'success': fitres['success'],
-            'message': fitres['message'],
-            'fit_attempts': fitres['attempts'],
-            'fit_rmax': fit_rmax,
-            'compression_weight': bool(args.use_compression_weight),
+            "occupation": orb["occupation"],
+            "cutoff": orb["cutoff"],
+            "sto_exponents": orb["sto_exponents"].tolist(),
+            "sto_coeff_matrix": orb["sto_coeff_matrix"].tolist(),
+            "relative_rms": fitres["rel_rms"],
+            "success": fitres["success"],
+            "message": fitres["message"],
+            "fit_attempts": fitres["attempts"],
+            "fit_rmax": fit_rmax,
+            "compression_weight": bool(args.use_compression_weight),
         }
     return fitted, meta
 
@@ -976,15 +1048,17 @@ def write_basis_and_compare(
     Returns the (possibly updated) meta dict.
     """
     basis_txt = format_basis(elem, fitted)
-    basis_path = outdir / f'{elem}.basis'
+    basis_path = outdir / f"{elem}.basis"
     basis_path.write_text(basis_txt)
 
     if not args.compare_with:
         return meta
 
     comparison = compare_basis_files(args.compare_with, basis_path)
-    meta['comparison'] = comparison
-    meta['comparison_curves'] = compare_basis_curves(args.compare_with, basis_path, rmax=args.rmax, ngrid=args.ngrid)
+    meta["comparison"] = comparison
+    meta["comparison_curves"] = compare_basis_curves(
+        args.compare_with, basis_path, rmax=args.rmax, ngrid=args.ngrid
+    )
 
     exceeded_shells = comparison_exceeds_thresholds(
         comparison,
@@ -992,38 +1066,117 @@ def write_basis_and_compare(
         coeff_threshold=args.compare_coeff_threshold,
     )
     if exceeded_shells:
-        comparison['status'] = 'failed'
-        comparison['failed_shells'] = exceeded_shells
-        raise SystemExit(f'Comparison failed for {elem}: exceeded thresholds in shells {", ".join(exceeded_shells)}')
+        comparison["status"] = "failed"
+        comparison["failed_shells"] = exceeded_shells
+        raise SystemExit(
+            f"Comparison failed for {elem}: exceeded thresholds in shells {', '.join(exceeded_shells)}"
+        )
     return meta
 
 
 def main() -> None:
     """CLI entry point: fit .basis files for the requested elements and report."""
-    ap = argparse.ArgumentParser(description='Derive PySOC-style .basis files from wfc.hsd STO orbitals.')
-    ap.add_argument('--wfc', '-w', required=True, help='Path to wfc.hsd')
-    ap.add_argument('--skdef', '-s', default=None, help='Optional skdef.hsd for valence-shell metadata')
-    ap.add_argument('--elements', '-e', nargs='*', default=None, help='Elements to fit, e.g. C N O')
-    ap.add_argument('--outdir', '-o', default='derived_basis')
-    ap.add_argument('--weight', '-W', default='r2', choices=['r0', 'r2', 'soc'])
-    ap.add_argument('--rmax', '-R', type=float, default=DEFAULT_RMAX)
-    ap.add_argument('--ngrid', '-G', type=int, default=DEFAULT_NGRID)
-    ap.add_argument('--prefer-orbital', '-P', default='last', help='Which STO column per l channel to fit: last, first, or integer index')
-    ap.add_argument('--nprim-s', '-S', type=int, default=8)
-    ap.add_argument('--nprim-p', '-p', type=int, default=7)
-    ap.add_argument('--nprim-d', '-D', type=int, default=7)
-    ap.add_argument('--nprim-f', '-F', type=int, default=7)
-    ap.add_argument('--nprim-from', '-f', default='mio-1-1-fit', help='Directory of reference .basis files to read the exact per-shell primitive count from (per element, overriding --nprim-*); reference counts are not uniform (e.g. H uses 7 S-primitives, O uses 9). Falls back to --nprim-* for elements/shells missing from this directory. Pass a nonexistent path to disable.')
-    ap.add_argument('--nstarts', '-N', type=int, default=DEFAULT_NSTARTS, help='Number of randomized fit restarts per shell')
-    ap.add_argument('--seed', '-E', type=int, default=DEFAULT_SEED, help='Seed for randomized restarts')
-    ap.add_argument('--use-compression-rmax', action='store_true', help='Use the skdef wave-compression radius as the fit cutoff for each shell when available')
-    ap.add_argument('--use-compression-weight', action='store_true', help='Taper the fit weights using the compression radius when available')
-    ap.add_argument('--atom-root', '-A', default=None, help='Optional _build root containing atom.* wavefunction outputs to use as direct fit targets when available')
-    ap.add_argument('--use-atom-wave-target', action='store_true', help='Use atom wavefunction outputs from --atom-root as the fit target instead of the STO expansion from wfc.hsd')
-    ap.add_argument('--compare-with', '-C', default=None, help='Optional basis file to compare against, for example C.basis_original')
-    ap.add_argument('--compare-exponent-threshold', '-T', type=float, default=None, help='Fail if any shell exceeds this maximum absolute exponent difference')
-    ap.add_argument('--compare-coeff-threshold', '-t', type=float, default=None, help='Fail if any shell exceeds this maximum absolute coefficient difference')
-    ap.add_argument('--report-json', '-J', default=None)
+    ap = argparse.ArgumentParser(
+        description="Derive PySOC-style .basis files from wfc.hsd STO orbitals."
+    )
+    ap.add_argument("--wfc", "-w", required=True, help="Path to wfc.hsd")
+    ap.add_argument(
+        "--skdef",
+        "-s",
+        default=None,
+        help="Optional skdef.hsd for valence-shell metadata",
+    )
+    ap.add_argument(
+        "--elements", "-e", nargs="*", default=None, help="Elements to fit, e.g. C N O"
+    )
+    ap.add_argument("--outdir", "-o", default="derived_basis")
+    ap.add_argument("--weight", "-W", default="r2", choices=["r0", "r2", "soc"])
+    ap.add_argument("--rmax", "-R", type=float, default=DEFAULT_RMAX)
+    ap.add_argument("--ngrid", "-G", type=int, default=DEFAULT_NGRID)
+    ap.add_argument(
+        "--prefer-orbital",
+        "-P",
+        default="last",
+        help="Which STO column per l channel to fit: last, first, or integer index",
+    )
+    ap.add_argument("--nprim-s", "-S", type=int, default=8)
+    ap.add_argument("--nprim-p", "-p", type=int, default=7)
+    ap.add_argument("--nprim-d", "-D", type=int, default=7)
+    ap.add_argument("--nprim-f", "-F", type=int, default=7)
+    ap.add_argument(
+        "--nprim-from",
+        "-f",
+        default="mio-1-1-fit",
+        help="Directory of reference .basis files to read the exact per-shell primitive count from (per element, overriding --nprim-*); reference counts are not uniform (e.g. H uses 7 S-primitives, O uses 9). Falls back to --nprim-* for elements/shells missing from this directory. Pass a nonexistent path to disable.",
+    )
+    ap.add_argument(
+        "--nstarts",
+        "-N",
+        type=int,
+        default=DEFAULT_NSTARTS,
+        help="Number of randomized fit restarts per shell",
+    )
+    ap.add_argument(
+        "--seed",
+        "-E",
+        type=int,
+        default=DEFAULT_SEED,
+        help="Seed for randomized restarts",
+    )
+    ap.add_argument(
+        "--lsq-tol",
+        type=float,
+        default=DEFAULT_LSQ_TOL,
+        help="xtol/ftol/gtol for the least_squares exponent search",
+    )
+    ap.add_argument(
+        "--nworkers",
+        type=int,
+        default=None,
+        help="Worker processes for parallel fit restarts (default: all cores)",
+    )
+    ap.add_argument(
+        "--use-compression-rmax",
+        action="store_true",
+        help="Use the skdef wave-compression radius as the fit cutoff for each shell when available",
+    )
+    ap.add_argument(
+        "--use-compression-weight",
+        action="store_true",
+        help="Taper the fit weights using the compression radius when available",
+    )
+    ap.add_argument(
+        "--atom-root",
+        "-A",
+        default=None,
+        help="Optional _build root containing atom.* wavefunction outputs to use as direct fit targets when available",
+    )
+    ap.add_argument(
+        "--use-atom-wave-target",
+        action="store_true",
+        help="Use atom wavefunction outputs from --atom-root as the fit target instead of the STO expansion from wfc.hsd",
+    )
+    ap.add_argument(
+        "--compare-with",
+        "-C",
+        default=None,
+        help="Optional basis file to compare against, for example C.basis_original",
+    )
+    ap.add_argument(
+        "--compare-exponent-threshold",
+        "-T",
+        type=float,
+        default=None,
+        help="Fail if any shell exceeds this maximum absolute exponent difference",
+    )
+    ap.add_argument(
+        "--compare-coeff-threshold",
+        "-t",
+        type=float,
+        default=None,
+        help="Fail if any shell exceeds this maximum absolute coefficient difference",
+    )
+    ap.add_argument("--report-json", "-J", default=None)
     args = ap.parse_args()
 
     wfc = parse_wfc(args.wfc)
@@ -1038,7 +1191,7 @@ def main() -> None:
 
     for elem in elements:
         if elem not in wfc:
-            raise KeyError(f'{elem} not present in wfc.hsd')
+            raise KeyError(f"{elem} not present in wfc.hsd")
 
         fitted, meta = fit_element(elem, wfc, valence, compressions, nprim_map, args)
         try:
@@ -1051,5 +1204,6 @@ def main() -> None:
     if not args.report_json:
         print(json.dumps(report, indent=2))
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
