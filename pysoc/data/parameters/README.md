@@ -126,6 +126,13 @@ matching file in that reference directory when one exists, falling back to
 (as is the case for every `ob2-1-1` element). Pass a nonexistent path to
 `--nprim-from` to disable and always use the `--nprim-*` values.
 
+To set counts per named shell, use `--nprim` / `-n` with entries
+`[ELEM:]SHELL=N`, e.g. `-n 1s=7 2s=9 2p=8 C:2p=10`. Shell names come from
+`skdef.hsd` `ValenceShells`, so this needs `--skdef`. Precedence, most
+specific first: `--nprim ELEM:shell` → `--nprim shell` → `--nprim-from`
+reference → `--nprim-s/-p/-d/-f`. The report records each shell's
+`nprim` and `nprim_source`.
+
 For elements with a much wider Slater-exponent range than mio-1-1's
 lightest elements (e.g. `ob2-1-1`'s Zn/Br/I, ζ up to 53), 8/7/7 primitives
 may not be enough for a good fit — pass a higher `--nprim-s/-p/-d` (10
@@ -175,6 +182,7 @@ python3 derive_basis_from_wfc.py \
 | `--rmax` | `-R` | 12.0 | Radial fit grid extent (bohr) |
 | `--nstarts` | `-N` | 60 | Randomized fit restarts per shell (VARPRO attempts are cheap; more is better up to diminishing returns) |
 | `--nprim-s`, `--nprim-p`, `--nprim-d`, `--nprim-f` | `-S`, `-p`, `-D`, `-F` | 8, 7, 7, 7 | Primitives per shell, used when `--nprim-from` has no match |
+| `--nprim` | `-n` | none | Per-shell primitive counts, `[ELEM:]SHELL=N` (e.g. `2s=9 C:2p=10`); needs `--skdef`; overrides `--nprim-from` and `--nprim-*` |
 | `--nprim-from` | `-f` | `mio-1-1-fit` | Reference dir to read exact per-shell primitive counts from |
 | `--use-compression-rmax` | | off | Use each shell's `skdef.hsd` `WaveCompressions` radius as its fit cutoff instead of `--rmax` |
 | `--compare-with` | `-C` | none | Reference `.basis` file to diff/validate against (single path — all fitted elements are compared to it, so only useful for one element at a time) |

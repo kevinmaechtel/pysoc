@@ -816,6 +816,55 @@ def reference_nprim_for_element(reference_dir: str | Path, elem: str) -> dict[in
     return {shell_l: sh["exponents"].size for shell_l, sh in shells.items()}
 
 
+def parse_nprim_specs(specs: list[str] | None) -> dict[tuple[str | None, str], int]:
+    """Parse --nprim entries like ``2s=9`` or ``C:2p=8`` into a lookup dict.
+
+    Returns {(element or None, shell label in lower case): nprim}; an
+    entry without an element prefix applies to that shell of every element.
+    """
+    out: dict[tuple[str | None, str], int] = {}
+    for spec in specs or []:
+        match = re.fullmatch(r"(?:([A-Z][a-z]?):)?(\d+[spdfSPDF])=(\d+)", spec.strip())
+        if not match:
+            raise ValueError(
+                f"Invalid --nprim entry {spec!r}; expected e.g. 2s=9 or C:2p=8"
+            )
+        out[(match.group(1), match.group(2).lower())] = int(match.group(3))
+    return out
+
+
+def valence_shell_names(valence_shell_labels: list[str]) -> dict[int, str]:
+    """Map angular momentum to the full skdef shell name, e.g. {0: '2s', 1: '2p'}."""
+    return {
+        CHAR2L[label[-1].upper()]: label.lower()
+        for label in valence_shell_labels
+        if label[-1].upper() in CHAR2L
+    }
+
+
+def resolve_nprim(
+    elem: str,
+    shell_l: int,
+    shell_name: str | None,
+    nprim_specs: dict[tuple[str | None, str], int],
+    reference_nprim: dict[int, int],
+    nprim_map: dict[int, int],
+) -> tuple[int, str]:
+    """Pick the primitive count for one shell, most specific source first.
+
+    Order: --nprim ``Elem:2s=N``, --nprim ``2s=N``, the --nprim-from
+    reference file, then --nprim-s/-p/-d/-f. Returns (nprim, source).
+    """
+    if shell_name is not None:
+        if (elem, shell_name) in nprim_specs:
+            return nprim_specs[(elem, shell_name)], f"--nprim {elem}:{shell_name}"
+        if (None, shell_name) in nprim_specs:
+            return nprim_specs[(None, shell_name)], f"--nprim {shell_name}"
+    if shell_l in reference_nprim:
+        return reference_nprim[shell_l], "--nprim-from"
+    return nprim_map[shell_l], f"--nprim-{L2CHAR[shell_l].lower()}"
+
+
 def compare_basis_files(
     reference_path: str | Path, derived_path: str | Path
 ) -> dict[str, Any]:
@@ -1110,6 +1159,8 @@ def fit_element(
     nprim_overrides = (
         reference_nprim_for_element(args.nprim_from, elem) if args.nprim_from else {}
     )
+    nprim_specs = parse_nprim_specs(args.nprim)
+    shell_names = valence_shell_names(valence.get(elem, []))
 
     fitted: dict[int, dict[str, Any]] = {}
     meta: dict[str, Any] = {
@@ -1138,7 +1189,14 @@ def fit_element(
         if atom_wave_path:
             meta.setdefault("atom_wave_targets", {})[shell_label] = atom_wave_path
 
-        nprim = nprim_overrides.get(shell_l, nprim_map[shell_l])
+        nprim, nprim_source = resolve_nprim(
+            elem,
+            shell_l,
+            shell_names.get(shell_l),
+            nprim_specs,
+            nprim_overrides,
+            nprim_map,
+        )
         fitres = fit_shell_varpro(
             r_shell,
             target,
@@ -1158,6 +1216,9 @@ def fit_element(
             "cutoff": orb["cutoff"],
             "sto_exponents": orb["sto_exponents"].tolist(),
             "sto_coeff_matrix": orb["sto_coeff_matrix"].tolist(),
+            "shell": shell_names.get(shell_l),
+            "nprim": nprim,
+            "nprim_source": nprim_source,
             "target_norm": target_norm,
             "fit_norm_before_rescale": fitres["raw_norm"],
             "relative_rms": fitres["rel_rms"],
@@ -1263,6 +1324,14 @@ def main() -> None:
         help="Directory of reference .basis files to read the exact per-shell primitive count from (per element, overriding --nprim-*); reference counts are not uniform (e.g. H uses 7 S-primitives, O uses 9). Falls back to --nprim-* for elements/shells missing from this directory. Pass a nonexistent path to disable.",
     )
     ap.add_argument(
+        "--nprim",
+        "-n",
+        nargs="+",
+        default=None,
+        metavar="[ELEM:]SHELL=N",
+        help="Primitive count per valence shell, e.g. '1s=7 2s=9 2p=8 C:2p=10'. Shell names come from skdef.hsd ValenceShells, so --skdef is required. Element-prefixed entries win over plain ones; both override --nprim-from and --nprim-s/-p/-d/-f",
+    )
+    ap.add_argument(
         "--nstarts",
         "-N",
         type=int,
@@ -1345,6 +1414,12 @@ def main() -> None:
     args = ap.parse_args()
     if args.norm_tol is not None and args.norm_tol < 0:
         args.norm_tol = None
+    if args.nprim and not args.skdef:
+        ap.error("--nprim needs --skdef to know each element's shell names (e.g. 2s)")
+    try:
+        parse_nprim_specs(args.nprim)
+    except ValueError as exc:
+        ap.error(str(exc))
 
     wfc = parse_wfc(args.wfc)
     valence = parse_skdef_valence(args.skdef) if args.skdef else {}
