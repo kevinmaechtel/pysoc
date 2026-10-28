@@ -32,7 +32,9 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+from scipy.integrate import trapezoid
 from scipy.optimize import least_squares
+from scipy.special import gamma
 
 L2CHAR = {0: "S", 1: "P", 2: "D", 3: "F"}
 CHAR2L = {v: k for k, v in L2CHAR.items()}
@@ -43,6 +45,7 @@ DEFAULT_WEIGHT = "r2"
 DEFAULT_NSTARTS = 60
 DEFAULT_SEED = 0
 DEFAULT_LSQ_TOL = 1e-10
+DEFAULT_NORM_TOL = 1e-4
 
 
 def require_search(pattern: str, text: str, flags: int = 0) -> re.Match[str]:
@@ -322,6 +325,27 @@ def target_radial_from_wfc(orb: dict[str, Any]) -> Callable[[np.ndarray], np.nda
     return f
 
 
+def sto_radial_norm(orb: dict[str, Any]) -> float:
+    """Analytic <R|R> = int R(r)^2 r^2 dr for one wfc.hsd orbital.
+
+    Uses int_0^inf r^n exp(-a r) dr = n! / a^(n+1) on every pair of
+    Slater terms of target_radial_from_wfc.
+    """
+    shell_l = orb["l"]
+    zetas = []
+    powers = []
+    coeffs = []
+    for zeta, coeffs_for_zeta in zip(orb["sto_exponents"], orb["sto_coeff_matrix"]):
+        for k, c in enumerate(coeffs_for_zeta):
+            zetas.append(zeta)
+            powers.append(shell_l + k)
+            coeffs.append(c)
+    z = np.add.outer(zetas, zetas)
+    n = np.add.outer(powers, powers) + 2
+    c = np.array(coeffs)
+    return float(c @ (gamma(n + 1) / z ** (n + 1)) @ c)
+
+
 def parse_atom_wave_file(path: str | Path) -> dict[str, Any]:
     """Parse a skprogs slateratom ``wave_*.dat`` numerical wavefunction file.
 
@@ -449,6 +473,44 @@ def gto_contract_radial(
     for a, c in zip(alphas, coeffs):
         vals += c * (r**shell_l) * np.exp(-a * r * r)
     return vals
+
+
+def gto_radial_overlap(
+    alphas1: np.ndarray,
+    coeffs1: np.ndarray,
+    l1: int,
+    alphas2: np.ndarray,
+    coeffs2: np.ndarray,
+    l2: int,
+) -> float:
+    """Analytic int R1(r) R2(r) r^2 dr between two contracted GTO radial functions.
+
+    Uses int_0^inf r^n exp(-p r^2) dr = Gamma((n+1)/2) / (2 p^((n+1)/2))
+    with n = l1 + l2 + 2. With l1 == l2 and the same shell twice this is
+    the shell's norm <R|R>; with l1 != l2 it is the purely radial overlap
+    (the full 3D overlap is zero by angular symmetry regardless).
+    """
+    half = 0.5 * (l1 + l2 + 3)
+    p = np.add.outer(alphas1, alphas2)
+    return float(coeffs1 @ (gamma(half) / (2.0 * p**half)) @ coeffs2)
+
+
+def normalize_shell_fit(fitres: dict[str, Any], shell_l: int) -> dict[str, Any]:
+    """Rescale a fit_shell_varpro result to unit norm <R|R> = 1, in place.
+
+    Records the norm before rescaling as 'raw_norm': since the target is
+    normalized before fitting, |raw_norm - 1| measures how far the fit
+    itself was from normalized (checked against --norm-tol in
+    basis_orthonormality).
+    """
+    alphas = fitres["alphas"]
+    coeffs = fitres["coeffs"]
+    raw_norm = gto_radial_overlap(alphas, coeffs, shell_l, alphas, coeffs, shell_l)
+    scale = 1.0 / np.sqrt(raw_norm)
+    fitres["coeffs"] = coeffs * scale
+    fitres["fit"] = fitres["fit"] * scale
+    fitres["raw_norm"] = raw_norm
+    return fitres
 
 
 def make_grid(rmax: float = DEFAULT_RMAX, ngrid: int = DEFAULT_NGRID) -> np.ndarray:
@@ -899,6 +961,64 @@ def comparison_exceeds_thresholds(
     return sorted(set(exceeded))
 
 
+def basis_orthonormality(
+    shells: dict[int, dict[str, Any]],
+    norm_tol: float | None = DEFAULT_NORM_TOL,
+    ortho_tol: float | None = None,
+    raw_norms: dict[int, float] | None = None,
+) -> dict[str, Any]:
+    """Check norms and cross-l radial overlaps of a parse_basis_file shells dict.
+
+    A shell counts as normalized if |<R|R> - 1| <= norm_tol, both for the
+    shell as given and, when `raw_norms` (angular momentum -> norm of the
+    fit before normalize_shell_fit rescaled it) is passed, for the raw fit.
+    A pair of shells with different l counts as orthogonal if their purely
+    radial overlap |int R_l R_l' r^2 dr| <= ortho_tol. Note that physical
+    valence orbitals are generally far from radially orthogonal across l
+    (e.g. 2s/2p), so this check is off (report only) by default. Either
+    tolerance may be None to skip that check.
+
+    Returns {'norms', 'raw_norms', 'radial_overlaps', 'norm_tol',
+    'ortho_tol', 'failed'}, where 'failed' lists the shell labels / 'S-P'
+    style pair labels that exceeded a tolerance.
+    """
+    norms: dict[str, float] = {}
+    for shell_l, sh in sorted(shells.items()):
+        alphas, coeffs = sh["exponents"], sh["coeffs"]
+        norms[L2CHAR[shell_l]] = gto_radial_overlap(
+            alphas, coeffs, shell_l, alphas, coeffs, shell_l
+        )
+
+    overlaps: dict[str, float] = {}
+    ls = sorted(shells)
+    for i, l1 in enumerate(ls):
+        for l2 in ls[i + 1 :]:
+            sh1, sh2 = shells[l1], shells[l2]
+            overlaps[f"{L2CHAR[l1]}-{L2CHAR[l2]}"] = gto_radial_overlap(
+                sh1["exponents"], sh1["coeffs"], l1, sh2["exponents"], sh2["coeffs"], l2
+            )
+
+    raw = {L2CHAR[shell_l]: norm for shell_l, norm in (raw_norms or {}).items()}
+    failed = []
+    if norm_tol is not None:
+        for label, norm in list(norms.items()) + list(raw.items()):
+            if abs(norm - 1.0) > norm_tol:
+                failed.append(label)
+    if ortho_tol is not None:
+        failed.extend(
+            pair for pair, overlap in overlaps.items() if abs(overlap) > ortho_tol
+        )
+
+    return {
+        "norms": norms,
+        "raw_norms": raw,
+        "radial_overlaps": overlaps,
+        "norm_tol": norm_tol,
+        "ortho_tol": ortho_tol,
+        "failed": sorted(set(failed)),
+    }
+
+
 def select_chosen_shells(
     wfc: dict[str, dict[str, Any]],
     valence: dict[str, list[str]],
@@ -933,15 +1053,21 @@ def fit_shell_target(
     atom_root: str | Path | None,
     use_atom_wave_target: bool,
     ngrid: int,
-) -> tuple[np.ndarray, np.ndarray, str | None]:
-    """Build the (r, target) fit target for one shell.
+) -> tuple[np.ndarray, np.ndarray, float, str | None]:
+    """Build the unit-norm (r, target) fit target for one shell.
 
     Uses the numerical _build wavefunction under atom_root when
     use_atom_wave_target is set and one is found, otherwise the exact
     analytic wfc.hsd STO expansion on a fresh grid up to fit_rmax.
 
-    Returns (r, target, atom_wave_path) where atom_wave_path is the
-    source file path when the numerical target was used, else None.
+    The target is divided by sqrt(<R|R>) so that the fit approximates a
+    normalized function: analytically over [0, inf) for the wfc.hsd
+    target (sto_radial_norm, independent of fit_rmax), by trapezoid
+    integration over the file's own grid for the numerical target.
+
+    Returns (r, target, target_norm, atom_wave_path) where target_norm
+    is <R|R> before normalization and atom_wave_path is the source file
+    path when the numerical target was used, else None.
     """
     shell_label = L2CHAR[shell_l]
     if use_atom_wave_target and atom_root:
@@ -950,11 +1076,20 @@ def fit_shell_target(
             raise FileNotFoundError(
                 f"No atom wave target found for {elem} shell {shell_label} under {atom_root}"
             )
-        return atom_target["r"], atom_target["wave"], atom_target["path"]
+        r_shell = atom_target["r"]
+        target = atom_target["wave"]
+        target_norm = float(trapezoid(r_shell**2 * target**2, r_shell))
+        return (
+            r_shell,
+            target / np.sqrt(target_norm),
+            target_norm,
+            atom_target["path"],
+        )
 
     r_shell = make_grid(fit_rmax, ngrid)
     target = target_radial_from_wfc(orb)(r_shell)
-    return r_shell, target, None
+    target_norm = sto_radial_norm(orb)
+    return r_shell, target / np.sqrt(target_norm), target_norm, None
 
 
 def fit_element(
@@ -991,7 +1126,7 @@ def fit_element(
         if args.use_compression_rmax:
             fit_rmax = shell_fit_rmax(compressions.get(elem), shell_label, args.rmax)
 
-        r_shell, target, atom_wave_path = fit_shell_target(
+        r_shell, target, target_norm, atom_wave_path = fit_shell_target(
             orb,
             shell_l,
             elem,
@@ -1017,12 +1152,14 @@ def fit_element(
             lsq_tol=args.lsq_tol,
             nworkers=args.nworkers,
         )
-        fitted[shell_l] = fitres
+        fitted[shell_l] = normalize_shell_fit(fitres, shell_l)
         meta[shell_label] = {
             "occupation": orb["occupation"],
             "cutoff": orb["cutoff"],
             "sto_exponents": orb["sto_exponents"].tolist(),
             "sto_coeff_matrix": orb["sto_coeff_matrix"].tolist(),
+            "target_norm": target_norm,
+            "fit_norm_before_rescale": fitres["raw_norm"],
             "relative_rms": fitres["rel_rms"],
             "success": fitres["success"],
             "message": fitres["message"],
@@ -1040,16 +1177,32 @@ def write_basis_and_compare(
     outdir: Path,
     args: argparse.Namespace,
 ) -> dict[str, Any]:
-    """Write <outdir>/<elem>.basis and, if --compare-with is set, compare it.
+    """Write <outdir>/<elem>.basis, check its orthonormality and optionally compare it.
 
-    Adds 'comparison' (raw coefficient diff) and 'comparison_curves'
+    Adds an 'orthonormality' entry (basis_orthonormality on the file as
+    written, so print rounding is included) and, if --compare-with is
+    set, 'comparison' (raw coefficient diff) and 'comparison_curves'
     (radial-function diff) entries to `meta`. Raises SystemExit if any
-    shell exceeds --compare-exponent-threshold / --compare-coeff-threshold.
+    shell exceeds --norm-tol / --ortho-tol or
+    --compare-exponent-threshold / --compare-coeff-threshold.
     Returns the (possibly updated) meta dict.
     """
     basis_txt = format_basis(elem, fitted)
     basis_path = outdir / f"{elem}.basis"
     basis_path.write_text(basis_txt)
+
+    _, written_shells = parse_basis_file(basis_path)
+    orthonormality = basis_orthonormality(
+        written_shells,
+        norm_tol=args.norm_tol,
+        ortho_tol=args.ortho_tol,
+        raw_norms={shell_l: fit["raw_norm"] for shell_l, fit in fitted.items()},
+    )
+    meta["orthonormality"] = orthonormality
+    if orthonormality["failed"]:
+        raise SystemExit(
+            f"Orthonormality check failed for {elem}: exceeded --norm-tol/--ortho-tol in {', '.join(orthonormality['failed'])}"
+        )
 
     if not args.compare_with:
         return meta
@@ -1176,8 +1329,22 @@ def main() -> None:
         default=None,
         help="Fail if any shell exceeds this maximum absolute coefficient difference",
     )
+    ap.add_argument(
+        "--norm-tol",
+        type=float,
+        default=DEFAULT_NORM_TOL,
+        help="Fail if |<R|R> - 1| of any shell exceeds this, checked on the raw fit (before the final rescale to unit norm) and on the written basis. Pass a negative value to disable",
+    )
+    ap.add_argument(
+        "--ortho-tol",
+        type=float,
+        default=None,
+        help="Fail if the radial overlap |int R_l R_l' r^2 dr| between any two shells of different l exceeds this (default: report only). Physical valence orbitals are generally not radially orthogonal across l",
+    )
     ap.add_argument("--report-json", "-J", default=None)
     args = ap.parse_args()
+    if args.norm_tol is not None and args.norm_tol < 0:
+        args.norm_tol = None
 
     wfc = parse_wfc(args.wfc)
     valence = parse_skdef_valence(args.skdef) if args.skdef else {}

@@ -96,6 +96,25 @@ For each requested element and each valence shell (angular momentum `l`):
    Breit-Pauli SOC operator) are also available but not default — they
    nail the near-origin value exactly at the cost of a much worse fit
    everywhere else.
+6. **The fit is normalized.** The target is scaled to unit norm
+   `∫|R(r)|² r² dr = 1` before fitting (analytically over `[0, ∞)` for the
+   `wfc.hsd` target, so independent of `--rmax`). The best fit is then
+   rescaled so its analytic norm is exactly 1 (the primitives stay
+   unnormalized; the contraction coefficients absorb the factor). Because
+   the least-squares residual is orthogonal to the fit in the r²-weighted
+   metric, the raw fit's norm deviation is second order in the fit error
+   (~1e-7 for mio-1-1 at ~5e-4 relative RMS).
+7. **Orthonormality check.** The written `.basis` is checked with
+   `basis_orthonormality`: every shell must satisfy `|⟨R|R⟩ − 1| ≤ --norm-tol`,
+   both for the raw fit and for the file as written (rounding included).
+   The purely radial overlaps `∫R_l R_l' r² dr` between shells of different `l`
+   are always reported and, with `--ortho-tol`, gated as well. Physical
+   valence orbitals are **not** radially orthogonal across `l` (mio-1-1 C:
+   S–P ≈ 0.95; S: S–D ≈ 0.87), so this gate is off by default. The full 3D
+   overlap is zero by angular symmetry either way. Exceeding either
+   tolerance raises `SystemExit` after the file and report are written.
+   Results go to the `orthonormality` entry of the report, with
+   `target_norm` and `fit_norm_before_rescale` per shell.
 
 ### Primitive counts
 
@@ -160,6 +179,8 @@ python3 derive_basis_from_wfc.py \
 | `--use-compression-rmax` | | off | Use each shell's `skdef.hsd` `WaveCompressions` radius as its fit cutoff instead of `--rmax` |
 | `--compare-with` | `-C` | none | Reference `.basis` file to diff/validate against (single path — all fitted elements are compared to it, so only useful for one element at a time) |
 | `--compare-exponent-threshold`, `--compare-coeff-threshold` | `-T`, `-t` | none | Fail (`SystemExit`) if the raw coefficient/exponent diff exceeds this |
+| `--norm-tol` | | 1e-4 | Fail if any shell's `\|⟨R\|R⟩ − 1\|` (raw fit or written file) exceeds this; negative disables |
+| `--ortho-tol` | | none | Fail if any cross-`l` radial overlap `\|∫R_l R_l' r² dr\|` exceeds this; default is report only |
 | `--report-json` | `-J` | stdout | Where to write the per-element fit report (occupation, cutoff, relative RMS, comparison results, etc.) |
 
 Run `python3 derive_basis_from_wfc.py --help` for the full list (also
