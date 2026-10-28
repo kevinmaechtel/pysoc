@@ -1,4 +1,2 @@
 .vscode/
-pysoc/__pycache__/
-pysoc/io/__pycache__/
-pysoc/program/__pycache__/
+__pycache__/
